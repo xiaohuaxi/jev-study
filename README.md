@@ -40,7 +40,7 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 **版本要求**（实跑钉死，2026-09-20）：
 
-- **绝大多数脚本只用标准库，Python 3.9 就能跑。** `replicate.py`、`exp_control.py`、`exp_limits.py` 在 3.9.6 上原样跑通，输出与报告一致。3.10–3.12 没有装机验证过。
+- **绝大多数脚本只用标准库，Python 3.9 就能跑。** 调 Jev 是直接发 HTTP 请求，不经过官方 SDK。`replicate.py`、`exp_control.py`、`exp_limits.py` 在 3.9.6 上原样跑通，输出与报告一致。3.10–3.12 没有装机验证过。
 - `integration/pysdk_test.py`、`integration/sdk_gaps.py` 需要官方 `typesafe-sdk`（包元数据写 `Requires-Python: >=3.10`；3.9 下 pip 直接装不上）。在 3.13.15 上验证通过。
 - `integration/jssdk_test.mjs` 需要官方 `@typesafe-ai/sdk`；在 Node 24 上验证通过，包自报 `>=20`。
 - `games/exp_game_chess.py` 需要 `pip install chess`（python-chess 1.11.2）。
