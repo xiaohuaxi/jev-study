@@ -16,17 +16,9 @@
 | [中文表现](chinese/README.md) | 中英对照、绕弯表达、档位文案对打分的影响、汉字容量、长文定位 | 约 570 次请求 |
 | [打游戏](games/README.md) | GridWorld、国际象棋、实时循环的频率与成本、一次问几百个问题 | 约 1,080 次请求 |
 
-## 这不是什么
+全部经 OpenRouter 实测，只覆盖模型快照 `typesafe/jev-1.13-20260917`；官方直连、Vercel AI Gateway、Cloudflare Workers AI 都没跑。其余没跑到的，各报告文末的「未验证」一节列了。
 
-说在最前面，免得被当成它不是的东西：
-
-- **不是 benchmark，也不是评测。** 没有第三方标注集，所有"正确答案"都是我自己构造用例时定的，用例还偏容易。这些数据能回答"两个条件之间有没有差别"，**不能得出任何准确率数字**。
-- **概率没做 calibration。** 回包里的 `0.9` 是模型的输出，不代表"90% 正确"。全部实测只用它来比较不同条件之间的差异。
-- **只走 OpenRouter 一条路。** TypeSafe 官方直连没有账号、完全没验证；Vercel AI Gateway 和 Cloudflare Workers AI 一次都没跑。
-- **只覆盖一个模型快照** `typesafe/jev-1.13-20260917`。跨版本会不会变，不知道。
-- **不是教程。** 是一份"我跑了什么、看到了什么"的记录，写给想自己验一遍的人。
-
-报告里凡是没跑到的，各自文末的「未验证」一节都列清了。
+用例是我自己构造的，没有第三方标注集。**这些数据能看出两个条件之间有没有差别，得不出准确率**——回包里的 `0.9` 是模型的输出，不是"90% 正确"。
 
 ## 怎么跑
 
@@ -38,12 +30,9 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 从任意目录跑都行，脚本自己会找到仓库根部的 `jevkit.py` 和 `corpus.py`。
 
-**版本要求**（实跑钉死，2026-09-20）：
+**多数脚本只用标准库，Python 3.9 就能跑**——调 Jev 是直接发 HTTP 请求，不经过官方 SDK（在系统自带的 3.9.6 上实跑验证过）。
 
-- **绝大多数脚本只用标准库，Python 3.9 就能跑。** 调 Jev 是直接发 HTTP 请求，不经过官方 SDK。`replicate.py`、`exp_control.py`、`exp_limits.py` 在 3.9.6 上原样跑通，输出与报告一致。3.10–3.12 没有装机验证过。
-- `integration/pysdk_test.py`、`integration/sdk_gaps.py` 需要官方 `typesafe-sdk`（包元数据写 `Requires-Python: >=3.10`；3.9 下 pip 直接装不上）。在 3.13.15 上验证通过。
-- `integration/jssdk_test.mjs` 需要官方 `@typesafe-ai/sdk`；在 Node 24 上验证通过，包自报 `>=20`。
-- `games/exp_game_chess.py` 需要 `pip install chess`（python-chess 1.11.2）。
+要装东西的只有三个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/exp_game_chess.py` 要 `pip install chess`。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
 
 **会真的花钱。** 全套约 1,430 次请求、$0.15 上下。最贵的是单次塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）。
 
@@ -77,7 +66,7 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 | `games/exp_game_scale.py` | 候选项 2→255 的延迟与位置偏好、一次问 1→500 个问题 | ~59 |
 | `games/exp_game_chess.py` | 一步杀、最佳着法选中率、对随机走子 4 局（需 python-chess） | ~128 |
 
-## 关于对照组，一句提醒
+## 两个教训
 
 `chinese/exp_control.py` 单独存在是有原因的。第一版长文实验的对照组写错了分支，"没有关键句"那组实际上照样插了关键句，结果显示"无关键句也有 0.97 命中"，看着像模型在胡乱说是——其实是脚本的 bug。修好后对照组是 0.01。
 
