@@ -99,4 +99,4 @@ games/          打游戏实测 + 脚本
 
 ## 许可
 
-整个仓库按 MIT 许可（见 [LICENSE](LICENSE)），脚本和报告文字都算在内——MIT 原文授权的就是「this software and associated documentation files」。拿去用、改、转载都不用问我。
+MIT，见 [LICENSE](LICENSE)。
