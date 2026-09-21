@@ -25,11 +25,15 @@ NEEDLE = 'Bletchley Park'
 TARGET = 'Alan Turing'
 
 def titles(n):
-    out = []
-    for a in ASPECTS:
-        for d in DOMAINS:
-            out.append('%s %s' % (d, a))
-            if len(out) >= n: return out
+    """造 n 个互不相同的干扰条目；ASPECTS×DOMAINS 只有 300 组，更多的加一个后缀继续。"""
+    out, rnd = [], 0
+    while len(out) < n:
+        suffix = '' if rnd == 0 else ' (part %d)' % (rnd + 1)
+        for a in ASPECTS:
+            for d in DOMAINS:
+                out.append('%s %s%s' % (d, a, suffix))
+                if len(out) >= n: return out
+        rnd += 1
     return out
 
 def link_state(n, where):
@@ -81,22 +85,23 @@ def q_state(k):
 
 def part_b():
     print('\n== B 一次请求里问多少个问题：延迟 / 计费 / 每题准确率 ==')
-    print('%5s %7s %7s %7s %9s' % ('问题数', '延迟中位', '输入tok', '输出tok', '逐题准确率'))
+    print('%5s %7s %7s %7s %9s %s' % (
+        '问题数', '延迟中位', '输入tok', '输出tok', '逐题准确率', '各次答错的题数'))
     for k in KS:
         st, qs, truth = q_state(k)
         rs = [jev.call(st, qs, retries=1) for _ in range(2)]
         ok = [r for r in rs if '_error' not in r]
         if not ok:
             print('%5d 被拒 %s' % (k, str(rs[0].get('_error'))[:150])); continue
-        acc = []
-        for r in ok:
-            a = r['answers']
-            acc.append(sum(1 for k2, v in truth.items()
-                           if (a[k2]['noul'] >= 0.5) == v) / float(len(truth)))
-        print('%5d %7.2f %7d %7d %9s' % (
+        # 逐题准确率四舍五入后很容易显示成 100%，所以把答错的绝对题数一并打出来
+        wrong = [[k2 for k2, v in truth.items() if (r['answers'][k2]['noul'] >= 0.5) != v]
+                 for r in ok]
+        acc = [1 - len(w) / float(k) for w in wrong]
+        print('%5d %7.2f %7d %7d %9s %s' % (
             k, statistics.median([r['_elapsed'] for r in ok]),
             ok[0]['usage']['input_tokens'], ok[0]['usage']['output_tokens'],
-            '%.0f%% (%d/%d 次成功)' % (100 * statistics.mean(acc), len(ok), len(rs))))
+            '%.1f%% (%d/%d 次成功)' % (100 * statistics.mean(acc), len(ok), len(rs)),
+            ['%d/%d' % (len(w), k) for w in wrong]))
 
 def part_c():
     print('\n== C 超过 255 个候选 ==')

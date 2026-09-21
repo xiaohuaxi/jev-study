@@ -4,7 +4,7 @@
 
 > A hands-on study of [Jev](https://typesafe.ai/) (TypeSafe's "System One" model) accessed through OpenRouter:
 > integration, Chinese-language behaviour, and game loops. Every figure in the reports is reproducible
-> by the scripts in this repo. Reports are in Chinese. ~1,430 API calls, about $0.15 total.
+> by the scripts in this repo. Reports are in Chinese. ~1,450 API calls, about $0.15 total.
 
 ## 这是什么
 
@@ -14,7 +14,7 @@
 |---|---|---|
 | [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 730 次请求 |
 | [中文表现](chinese/README.md) | 中英对照、绕弯表达、档位文案对打分的影响、汉字容量、长文定位 | 约 570 次请求 |
-| [打游戏](games/README.md) | GridWorld、国际象棋、实时循环的频率与成本、一次问几百个问题 | 约 1,080 次请求 |
+| [打游戏](games/README.md) | GridWorld、国际象棋、中国象棋初探、实时循环的频率与成本、一次问几百个问题 | 约 1,230 次请求（含复核） |
 
 全部经 OpenRouter 实测，只覆盖模型快照 `typesafe/jev-1.13-20260917`；官方直连、Vercel AI Gateway、Cloudflare Workers AI 都没跑。其余没跑到的，各报告文末的「未验证」一节列了。
 
@@ -32,9 +32,9 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 **多数脚本只用标准库，Python 3.9 就能跑**——调 Jev 是直接发 HTTP 请求，不经过官方 SDK（在系统自带的 3.9.6 上实跑验证过）。
 
-要装东西的只有三个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/exp_game_chess.py` 要 `pip install chess`。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
+要装东西的只有四个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/exp_game_chess.py` 要 `pip install chess`，`games/exp_game_xiangqi.py` 要 `pip install cchess chess`。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
 
-**会真的花钱。** 全套约 1,430 次请求、$0.15 上下。最贵的是单次塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）。
+**会真的花钱。** 全套约 1,450 次请求、$0.15 上下。最贵的是单次塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）。
 
 **`jev.spend()` 打印的「失败」计数不一定是出错。** 探上限、探非法参数的实验本来就期望收到 4xx。
 
@@ -65,6 +65,7 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 | `games/exp_game_rate.py` | 串行循环 Hz、固定 10 Hz 重叠飞行、决策过期 tick 数、成本核对 | 75 |
 | `games/exp_game_scale.py` | 候选项 2→255 的延迟与位置偏好、一次问 1→500 个问题 | ~59 |
 | `games/exp_game_chess.py` | 一步杀、最佳着法选中率、对随机走子 4 局（需 python-chess） | ~128 |
+| `games/exp_game_xiangqi.py` | 中国象棋初探：同一套接法换成中国象棋，看盘、规则、一步杀（需 cchess 与 python-chess） | ~25 |
 
 ## 两个教训
 
