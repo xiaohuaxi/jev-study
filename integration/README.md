@@ -1,6 +1,6 @@
 # Jev 实测接入记录：OpenRouter 路径
 
-> **实测日期：2026-09-20**
+> **实测日期：2026-09-20**；「偶尔有一次会拖几十秒」「浏览器能直接调」两条是 2026-09-21 补的
 > **入口：** OpenRouter（`https://openrouter.ai/api`），未使用 TypeSafe 官方账号
 > **模型解析串：** 请求写 `jev-1.13` / `jev-latest`，服务端一律回 `typesafe/jev-1.13-20260917`
 > **SDK 版本：** PyPI `typesafe-sdk` 0.7.0、npm `@typesafe-ai/sdk` 0.6.0
@@ -244,6 +244,7 @@ noul=0.90  0.90  0.90  0.90  0.91  0.90      choice 全部 frontend，p=0.99，c
 - 单次请求稳定在 **0.85–1.0 秒**（本机经公网到 OpenRouter，未做多地对比）。官方宣称的 70–500ms 是美西本地测的，别照抄进你的 SLA。
 - 3 万 token 的大 state：**1.6–1.7 秒**，涨得很平。
 - **20 个请求并发打出去：20 个全 200**，中位 0.93 秒、最慢 1.70 秒，墙钟 2.79 秒，没撞到任何限流。OpenRouter 侧对 Jev 的具体配额没有公开数字，这次也没触到。
+- **偶尔有一次会拖几十秒**（2026-09-21 补）：做网页对弈版前后约 790 次调用，有 3 次单次调用超过 20 秒——21 秒、76 秒，还有一次 90 秒还没回；那天平时每次中位 1.10 秒。**urllib 的 timeout 挡不住这种慢**：它管的是多久没收到数据，不是总时长，那次 21 秒的调用就是在 20 秒 timeout 下照样等完的。要限时得自己按总时长截断，做法见 [打游戏实测记录](../games/README.md) 第六节。
 
 ### 上下文是两道墙：state + 最长问题 32K，整请求 64K
 
@@ -288,6 +289,20 @@ state + 单个最长 question  ≤ 32,768
 这个限制**来自上游 TypeSafe 而不是网关**：证据是错误体形状。OpenRouter 自己的校验返回 zod 风格的结构化数组（如缺 `state` 时逐字段报错），而超限错误是 `HTTP 400: {"detail":{"error_type":"max_tokens_exceeded"}}` 这种**上游原样包一层**的形状，和 255 选项、10 档位这两条已知的 TypeSafe 限制报错形状完全一致。不过没有官方 key 直连做对照，**不能断定官方直连也是 32K**。
 
 > 原文这里还有一句「上限算的是整个请求，不是单看 state」，举的例子是 3 万 token 的 state 加 40 个问题一起过、计费 29,849 token。那个例子两道墙都没碰到，**证不出结论**，已按上表更正。
+
+### 浏览器能直接调：跨域全开
+
+（2026-09-21 补测）OpenRouter 的 Jev 接口对任何来源的网页都放行跨域。不带 key 的预检请求回 204、`Access-Control-Allow-Origin: *`，允许的请求头里有 `Authorization` 和 `Content-Type`，允许的方法里有 `POST`；带 key 真发，从 `http://localhost` 和 `https://example.com` 两个来源都是 200，同样回 `*`。再在真浏览器（无头 Chrome，页面在 `http://127.0.0.1`）里用假 key 直接 `fetch`，拿到的是读得出内容的 401，没被跨域拦下。
+
+所以**把 key 写进网页，浏览器不会替你拦**：写进页面的 key，打开页面的人都拿得到。网页要调 Jev，要么像网页对弈版那样经本地或服务端转一道，要么让用户填他自己的 key。
+
+复现（不需要 key）：
+
+```bash
+curl -si -X OPTIONS https://openrouter.ai/api/v1/systemone \
+  -H 'Origin: https://example.com' -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization,content-type' | grep -i '^access-control'
+```
 
 ## 与文献结论的出入
 
@@ -339,10 +354,11 @@ integration-from-docs.md（文献版，未收录本仓库） 是基于官方与�
 4. **先量 calibration**：`0.9` 是模型的置信度，不是你业务上的 90% 正确率。拿自己的标注集量一遍准确率再定线。
 5. **错误分流**：400 归告警（你的请求有问题），429/529 才退避重试。
 6. **`state` 按 32K 规划**（加上最长的那个问题一起算），进来前先截断或摘要；整请求另有 64K 的墙，问题多了照样会撞。
-7. **key 只放服务端**，OpenRouter key 能花钱，不能进前端包、不能进仓库。
+7. **key 只放服务端**，OpenRouter key 能花钱，不能进前端包、不能进仓库。跨域是全开的，浏览器不会替你拦。
 8. **过一遍两层数据政策**：走网关意味着请求同时经过 OpenRouter 和 TypeSafe，两家的留存政策都要看。
 9. **档位文案当配置管起来**：改一次档位描述等于换一把尺子，分数会整体位移，必须连着阈值一起重标。
 10. **要记账就别全靠 SDK**：官方 SDK 会丢掉 OpenRouter 返回的 `cost`，按花费做成本归集得走原始 HTTP。
+11. **每次调用设总时长上限**：偶尔一次会拖几十秒，urllib 的 timeout 只管多久没收到数据，管不住总时长。
 
 ## 未验证
 

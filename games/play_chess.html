@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>和 Jev 下棋</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cm-chessboard@8.14.0/assets/chessboard.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cm-chessboard@8.14.0/assets/extensions/markers/markers.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cm-chessboard@8.14.0/assets/extensions/promotion-dialog/promotion-dialog.css">
+<style>
+  :root {
+    --bg: #f6f4ef; --panel: #ffffff; --ink: #1f1f22; --muted: #6c6c72; --line: #e2dfd6;
+    --accent: #2f6f4f; --bar: #a9cfb8; --bar-on: #2f6f4f; --warn: #b3261e; --warn-bg: #fdecea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151619; --panel: #1f2125; --ink: #ececee; --muted: #9c9ca3; --line: #34373d;
+      --accent: #7cc39a; --bar: #3d6a51; --bar-on: #7cc39a; --warn: #f2b8b5; --warn-bg: #3a2322;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 18px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 820px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  #board { width: 100%; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .panel h2 { font-size: 15px; margin: 0 0 10px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg label { padding: 6px 14px; cursor: pointer; user-select: none; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg input:checked + span { color: var(--accent); font-weight: 600; }
+  .seg label:has(input:checked) { background: var(--line); }
+  button {
+    font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { font-weight: 600; margin: 12px 0 0; min-height: 1.6em; }
+  #error { display: none; background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+  #error button { margin-left: 8px; padding: 2px 10px; }
+  .cand { display: grid; grid-template-columns: 4.5em 1fr 3.2em; gap: 8px; align-items: center; margin: 5px 0; }
+  .cand .san { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .cand .track { display: block; height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+  .cand .fill { display: block; height: 100%; background: var(--bar); }
+  .cand.on .fill { background: var(--bar-on); }
+  .cand.on .san { font-weight: 700; color: var(--accent); }
+  .cand .p { text-align: right; font-variant-numeric: tabular-nums; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .empty { color: var(--muted); }
+  #moves { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; max-height: 180px; overflow-y: auto; word-break: break-word; }
+  #pgn { display: none; width: 100%; min-height: 120px; margin-top: 10px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+         background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>和 Jev 下国际象棋</h1>
+  <p class="lead">你走一步，Jev 回一步。右边会列出它这一步最看好的几个走法和各自的概率。</p>
+  <div class="layout">
+    <div id="board"></div>
+    <div>
+      <div class="panel">
+        <div class="controls">
+          <span class="seg" role="radiogroup" aria-label="执哪一方">
+            <label><input type="radio" name="side" value="w" checked><span>我执白</span></label>
+            <label><input type="radio" name="side" value="b"><span>我执黑</span></label>
+          </span>
+          <button id="restart" class="primary">新开一局</button>
+          <button id="export">导出 PGN</button>
+        </div>
+        <div id="status" aria-live="polite">正在加载棋盘…</div>
+        <div id="error"><span id="error-text"></span><button id="retry">重试</button></div>
+        <textarea id="pgn" readonly aria-label="PGN"></textarea>
+      </div>
+      <div class="panel">
+        <h2>Jev 这一步怎么挑的</h2>
+        <div id="cands"><p class="empty">Jev 还没走。</p></div>
+        <div id="cand-meta" class="meta"></div>
+      </div>
+      <div class="panel">
+        <h2>本局</h2>
+        <div id="stats" class="meta" style="margin-top:0">还没开始。</div>
+        <div id="moves" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+  <footer>
+    key 只在你本机运行的脚本里，这个网页拿不到。棋规：<a href="https://github.com/jhlywa/chess.js">chess.js</a>（BSD-2-Clause）；
+    棋盘：<a href="https://github.com/shaack/cm-chessboard">cm-chessboard</a>（MIT）；
+    棋子图形：<a href="https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces/Standard">Wikimedia Commons</a> 上 Cburnett、Rfc1394 的作品，
+    由 cm-chessboard 作者改编成图集，按 <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a> 使用，本页未再修改。
+  </footer>
+</main>
+
+<script type="module">
+import {Chess, DEFAULT_POSITION} from 'https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/esm/chess.js'
+import {Chessboard, COLOR, INPUT_EVENT_TYPE, BORDER_TYPE} from 'https://cdn.jsdelivr.net/npm/cm-chessboard@8.14.0/src/Chessboard.js'
+import {Markers, MARKER_TYPE} from 'https://cdn.jsdelivr.net/npm/cm-chessboard@8.14.0/src/extensions/markers/Markers.js'
+import {PromotionDialog, PROMOTION_DIALOG_RESULT_TYPE} from 'https://cdn.jsdelivr.net/npm/cm-chessboard@8.14.0/src/extensions/promotion-dialog/PromotionDialog.js'
+
+// 网页只认这一个接口：发当前局面和全部合法着法，收 Jev 选的那一步。换成别的后端，改这里即可。
+const API = '/api/move'
+const START = new URLSearchParams(location.search).get('fen') || DEFAULT_POSITION   // ?fen=... 可以从指定局面开始
+
+const $ = id => document.getElementById(id)
+const board = new Chessboard($('board'), {
+  position: DEFAULT_POSITION,
+  assetsUrl: 'https://cdn.jsdelivr.net/npm/cm-chessboard@8.14.0/assets/',
+  style: {borderType: BORDER_TYPE.frame, pieces: {file: 'pieces/standard.svg'}, animationDuration: 250},
+  extensions: [{class: Markers}, {class: PromotionDialog}],
+})
+
+let chess, human = 'w', gameId = 0, stats, retryFn = null
+window.jevLog = []    // 每步 Jev 的耗时与花费，方便在控制台里看
+
+const colorOf = c => c === 'w' ? COLOR.white : COLOR.black
+const setStatus = t => { $('status').textContent = t }
+function showError(text, retry) {
+  $('error-text').textContent = text
+  retryFn = retry || null
+  $('retry').style.display = retry ? '' : 'none'
+  $('error').style.display = 'block'
+}
+const hideError = () => { $('error').style.display = 'none' }
+
+function enableHuman() {
+  board.disableMoveInput()
+  board.enableMoveInput(onInput, colorOf(human))
+}
+
+function closePromotion() {   // 升变框开着时重开，把它收掉（棋盘库没有公开的关闭方法，版本已钉死在 8.14.0）
+  const pd = board.getExtension(PromotionDialog)
+  if (pd && board.isPromotionDialogShown()) {
+    pd.state.callback = null
+    pd.setDisplayState('hidden')
+  }
+}
+
+function newGame() {
+  gameId++
+  closePromotion()
+  hideError()
+  $('pgn').style.display = 'none'
+  try {
+    chess = new Chess(START)
+  } catch (e) {
+    chess = new Chess()
+    showError('网址里的 fen 不对，已改用标准开局：' + e.message)
+  }
+  human = document.querySelector('input[name=side]:checked').value
+  chess.setHeader('Event', '和 Jev 下国际象棋')
+  chess.setHeader('Site', 'jev-study games/play_chess.py')
+  chess.setHeader('Date', localTime().slice(0, 10).replaceAll('-', '.'))
+  chess.setHeader(human === 'w' ? 'White' : 'Black', '你')
+  chess.setHeader(human === 'w' ? 'Black' : 'White', 'Jev')
+  stats = {n: 0, wait: 0, cost: 0}
+  board.disableMoveInput()
+  board.removeMarkers()
+  board.setOrientation(colorOf(human))
+  board.setPosition(chess.fen(), false)
+  $('cands').innerHTML = '<p class="empty">Jev 还没走。</p>'
+  $('cand-meta').textContent = ''
+  renderStats()
+  next()
+}
+
+function next() {
+  renderMoves()
+  board.removeMarkers(MARKER_TYPE.circleDanger)
+  if (chess.inCheck()) {
+    const k = chess.findPiece({type: 'k', color: chess.turn()})[0]
+    if (k) board.addMarker(MARKER_TYPE.circleDanger, k)
+  }
+  if (chess.isGameOver()) return finish()
+  if (chess.turn() === human) {
+    setStatus('轮到你走')
+    enableHuman()
+  } else {
+    askJev()
+  }
+}
+
+function onInput(event) {
+  if (event.type === INPUT_EVENT_TYPE.movingOverSquare) return
+  if (event.type !== INPUT_EVENT_TYPE.moveInputFinished) board.removeLegalMovesMarkers()
+  if (event.type === INPUT_EVENT_TYPE.moveInputStarted) {
+    const ms = chess.moves({square: event.squareFrom, verbose: true})
+    board.addLegalMovesMarkers(ms)
+    return ms.length > 0
+  }
+  if (event.type === INPUT_EVENT_TYPE.validateMoveInput) {
+    const ms = chess.moves({square: event.squareFrom, verbose: true}).filter(m => m.to === event.squareTo)
+    if (!ms.length) return false
+    if (ms[0].promotion) {           // 升变：先让人选子
+      const id = gameId
+      board.showPromotionDialog(event.squareTo, colorOf(human), r => {
+        if (id !== gameId) return    // 选子框开着时已经重开了一局
+        if (r.type === PROMOTION_DIALOG_RESULT_TYPE.pieceSelected) {
+          humanMove(ms[0].from, ms[0].to, r.piece.charAt(1))
+        } else {                     // 取消了，棋子退回原位
+          board.setPosition(chess.fen(), true)
+          enableHuman()
+        }
+      })
+      return true
+    }
+    event.chessboard.state.moveInputProcess.then(() => humanMove(event.squareFrom, event.squareTo))
+    return true
+  }
+  if (event.type === INPUT_EVENT_TYPE.moveInputFinished && event.legalMove) board.disableMoveInput()
+}
+
+function humanMove(from, to, promotion) {
+  const m = chess.move({from, to, promotion})
+  markLast(m)
+  board.setPosition(chess.fen(), true).then(next)    // 易位、吃过路兵要连带挪别的子，按 FEN 重摆
+}
+
+function markLast(m) {
+  board.removeMarkers(MARKER_TYPE.square)
+  board.addMarker(MARKER_TYPE.square, m.from)
+  board.addMarker(MARKER_TYPE.square, m.to)
+}
+
+async function askJev() {
+  const id = gameId
+  hideError()
+  setStatus('Jev 思考中…')
+  const moves = chess.moves({verbose: true}).map(m => ({uci: m.from + m.to + (m.promotion || ''), san: m.san}))
+  const t0 = performance.now()
+  const tick = setInterval(() => {   // 平时 1 秒上下；偶尔卡住时让人看得到在等
+    const sec = Math.round((performance.now() - t0) / 1000)
+    if (id === gameId && sec >= 3) setStatus('Jev 思考中…已等 ' + sec + ' 秒（OpenRouter 偶尔会卡一下，20 秒没回会自动重发一次）')
+  }, 1000)
+  let res
+  try {
+    const r = await fetch(API, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({fen: chess.fen(), moves})})
+    res = await r.json().catch(() => ({error: '本地脚本回了看不懂的内容（HTTP ' + r.status + '）'}))
+    if (!r.ok || res.error) throw new Error(res.error || 'HTTP ' + r.status)
+  } catch (e) {
+    clearInterval(tick)
+    if (id !== gameId) return
+    setStatus('Jev 这一步没走成')
+    showError(e.message === 'Failed to fetch' ? '连不上本地脚本，确认 play_chess.py 还开着' : e.message, askJev)
+    return
+  }
+  clearInterval(tick)
+  if (id !== gameId) return          // 等回答的时候已经重开了一局
+  const wait = (performance.now() - t0) / 1000
+  let m
+  try {
+    m = chess.move({from: res.move.slice(0, 2), to: res.move.slice(2, 4), promotion: res.move[4]})
+  } catch (e) {
+    showError('Jev 回了一步走不了的棋：' + res.move)
+    return
+  }
+  chess.setHeader(human === 'w' ? 'Black' : 'White', 'Jev (' + res.model + ')')
+  stats.n++; stats.wait += wait; stats.cost += res.cost || 0
+  window.jevLog.push({game: id, ply: chess.history().length, san: res.san, wait, elapsed: res.elapsed,
+                      tokens: res.input_tokens, cost: res.cost, legal: res.legal})
+  renderCands(res, wait)
+  renderStats()
+  markLast(m)
+  board.setPosition(chess.fen(), true).then(next)
+}
+
+function renderCands(res, wait) {
+  $('cands').innerHTML = ''
+  for (const c of res.candidates) {
+    const row = document.createElement('div')
+    row.className = 'cand' + (c.uci === res.move ? ' on' : '')
+    row.innerHTML = '<span class="san"></span><span class="track"><span class="fill"></span></span><span class="p"></span>'
+    row.querySelector('.san').textContent = c.san + (c.uci === res.move ? ' ✓' : '')
+    row.querySelector('.fill').style.width = (c.p * 100).toFixed(1) + '%'
+    row.querySelector('.p').textContent = c.p.toFixed(2)
+    $('cands').appendChild(row)
+  }
+  const conf = typeof res.confidence === 'number' ? ' · confidence ' + res.confidence.toFixed(2) : ''
+  $('cand-meta').textContent = '从 ' + res.legal + ' 个合法着法里挑了 ' + res.san + conf +
+    ' · 等了 ' + wait.toFixed(2) + ' 秒 · 输入 ' + res.input_tokens + ' token · $' + (res.cost || 0).toFixed(7)
+}
+
+function renderStats() {
+  $('stats').textContent = stats.n
+    ? 'Jev 走了 ' + stats.n + ' 步 · 平均每步等 ' + (stats.wait / stats.n).toFixed(2) + ' 秒 · 共花 $' + stats.cost.toFixed(6)
+    : 'Jev 还没走。'
+}
+
+function renderMoves() {
+  const parts = []
+  for (const h of chess.history({verbose: true})) {
+    const no = h.before.split(' ')[5]
+    if (h.color === 'w') parts.push(no + '. ' + h.san)
+    else parts.push(parts.length ? h.san : no + '... ' + h.san)
+  }
+  $('moves').textContent = parts.join(' ')
+  $('moves').scrollTop = $('moves').scrollHeight
+}
+
+function finish() {
+  board.disableMoveInput()
+  let text, result = '1/2-1/2'
+  if (chess.isCheckmate()) {
+    result = chess.turn() === 'w' ? '0-1' : '1-0'
+    text = chess.turn() === human ? 'Jev 将死了你' : '你将死了 Jev'
+  } else if (chess.isStalemate()) {
+    text = '逼和：轮到的一方没被将军，却已无棋可走'
+  } else if (chess.isInsufficientMaterial()) {
+    text = '和棋：双方剩下的子都不够将死对方'
+  } else if (chess.isThreefoldRepetition()) {
+    text = '和棋：同一局面出现了三次'
+  } else {
+    text = '和棋：五十回合没有吃子也没有动兵'
+  }
+  chess.setHeader('Result', result)
+  setStatus('对局结束：' + text + '（' + result + '）')
+}
+
+// 本地时间 YYYY-MM-DDTHH:MM:SS；toISOString 是 UTC，东八区早上八点前会差一天
+function localTime() {
+  const t = new Date()
+  return new Date(t - t.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
+}
+
+function exportPgn() {
+  const pgn = chess.pgn()
+  $('pgn').value = pgn
+  $('pgn').style.display = 'block'
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([pgn + '\n'], {type: 'application/x-chess-pgn'}))
+  a.download = 'jev-' + localTime().replace(/[:T]/g, '-') + '.pgn'
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+$('restart').onclick = newGame
+$('export').onclick = exportPgn
+$('retry').onclick = () => retryFn && retryFn()
+for (const r of document.querySelectorAll('input[name=side]')) {
+  r.onchange = () => chess.history().length ? setStatus('点「新开一局」换边') : newGame()
+}
+newGame()
+</script>
+</body>
+</html>
