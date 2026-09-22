@@ -5,7 +5,8 @@
 > A hands-on study of [Jev](https://typesafe.ai/) (TypeSafe's "System One" model) accessed through OpenRouter:
 > integration, Chinese-language behaviour, game loops, and Chinese chess (xiangqi). Every figure in the reports is
 > reproducible by the scripts in this repo. Reports are in Chinese. ~11,450 API calls, about $0.73 total.
-> There is also a one-command browser game: play chess against Jev (`python3 games/play_chess.py`).
+> There are also one-command browser games: play chess (`python3 games/play_chess.py`) or Chinese chess
+> (`python3 xiangqi/play_xiangqi.py`) against Jev.
 
 ## 这是什么
 
@@ -16,7 +17,7 @@
 | [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 730 次请求 |
 | [中文表现](chinese/README.md) | 中英对照、绕弯表达、档位文案对打分的影响、汉字容量、长文定位 | 约 570 次请求 |
 | [打游戏](games/README.md) | GridWorld、国际象棋、中国象棋初探（结论已被下面的中国象棋专题改写）、实时循环的频率与成本、一次问几百个问题；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 2,410 次请求（含复核和问法对比）；做网页版另用约 790 次，不在可复跑的脚本里 |
-| [中国象棋](xiangqi/README.md) | 初探里「国际象棋一步杀 10/10、中国象棋 2/32」的差距从哪来（选项记谱里的 `#`、无效的旧局面）；读盘、规则落到盘面、谁能吃谁；接上适配器后整局能下到什么水平 | 约 10,900 次请求（含作废批次，作废的不在可复跑的脚本里） |
+| [中国象棋](xiangqi/README.md) | 初探里「国际象棋一步杀 10/10、中国象棋 2/32」的差距从哪来（选项记谱里的 `#`、无效的旧局面）；读盘、规则落到盘面、谁能吃谁；接上适配器后整局能下到什么水平；另有[浏览器里和 Jev 下中国象棋](#在浏览器里和-jev-下棋)的网页版 | 约 10,900 次请求（含作废批次，作废的不在可复跑的脚本里）；做网页版另用约 490 次，不在可复跑的脚本里 |
 
 全部经 OpenRouter 实测，只覆盖模型快照 `typesafe/jev-1.13-20260917`；官方直连、Vercel AI Gateway、Cloudflare Workers AI 都没跑。其余没跑到的，各报告文末的「未验证」一节列了。
 
@@ -36,13 +37,15 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 要装东西的只有这几个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/exp_game_chess.py` 和 `games/exp_game_chess_prompt.py` 要 `pip install chess`，`games/exp_game_xiangqi.py` 要 `pip install cchess chess`，`games/play_chess_check.py` 要 `pip install chess` 和 Node。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
 
-`xiangqi/` 下的脚本要 `pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`；引擎路径可用环境变量 `FAIRY_STOCKFISH` 指定，不设就从 PATH 里找）；其中 `xiangqi/exp_xiangqi_probe.py` 只要 cchess 与 chess。Python 3.9 起能跑，报告里的数字是在 3.13 上跑的。
+`xiangqi/` 下的脚本要 `pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`；引擎路径可用环境变量 `FAIRY_STOCKFISH` 指定，不设就从 PATH 里找）；其中 `xiangqi/exp_xiangqi_probe.py` 只要 cchess 与 chess，网页对弈 `xiangqi/play_xiangqi.py` 和它的核对脚本只要这三个库、不需要引擎。Python 3.9 起能跑，报告里的数字是在 3.13 上跑的。
 
 **会真的花钱。** 全套约 11,450 次请求、$0.73 上下，其中 `xiangqi/` 的四个脚本约 9,215 次、约 $0.54（中国象棋报告的约 10,900 次另含作废批次，作废的不在脚本里）。单次请求最贵的是塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）；按整个脚本算最贵的是 `xiangqi/exp_xiangqi_adapter.py`（5,950 次，大头是整局）。
 
 **`jev.spend()` 打印的「失败」计数不一定是出错。** 探上限、探非法参数的实验本来就期望收到 4xx。
 
 ## 在浏览器里和 Jev 下棋
+
+### 国际象棋
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-..."     # 或 API_KEY_OPENROUTER
@@ -56,6 +59,23 @@ python3 games/play_chess.py                  # 不用装任何包，Python 3.9 �
 - **每步约 1.1 秒，一盘 40 步约 $0.002。** 偶尔有一次调用会拖几十秒，脚本等到 20 秒就断开另发一次，页面上会显示已经等了几秒。
 - **Jev 看到的和[实验](games/README.md)里的一字不差**：同样的 FEN、轮到谁、全部合法着法、同一句问题，所以那边的结论照样适用。选项是带 `#`、`+`、`x` 的 SAN：网页上它确实会找杀，但主要是照着杀着后面的 `#` 选，这不说明它会下棋（在另外 48 个一步杀局面上对照，原样 SAN 48/48，去掉这些标记只中 10 个，见[中国象棋实测](xiangqi/README.md)第一节）；静态局面照样会送子。`games/play_chess_check.py` 逐字节比对过 31,604 个局面，不调 Jev（要联网下 chess.js）。
 - 网页只通过一个接口（`POST /api/move`）要 Jev 的回答，格式写在 `games/play_chess.py` 开头。
+
+### 中国象棋
+
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-..."     # 或 API_KEY_OPENROUTER
+python3 -m pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2    # 不需要引擎
+python3 xiangqi/play_xiangqi.py              # Python 3.9 起
+```
+
+用法和上面一样：自动打开浏览器，点棋子再点落点，Jev 回一步，右边列出它最看好的五步、各自的概率和它看到的选项文字。能选执红或执黑、新开一局、导出棋谱（中文记谱加 ICCS 坐标）；将死、困毙、长将判负、三次重复、一百个半回合没有吃子都会正常结束。按 Ctrl+C 结束，终端会打印这次请求了几次、花了多少。
+
+- **棋规在脚本里，不在网页里**：pyffish 判合法、将死、困毙和重复局面，cchess 只出中文记谱；网页只画棋盘。网页每次把整局着法送来，脚本逐步核对，不合法的直接拒绝。key 同样只在本机进程里，同时在途的请求限 2 个。
+- **只有调 Jev 要联网**：棋盘是网页自己画的，不加载外部库。
+- **每步约 1.1 秒、约 $0.00007。** 超时处理同上：到 20 秒就断开另发一次。
+- **Jev 看到的是[中国象棋实测](xiangqi/README.md)第七节整局实验里最好的那套接法**：盘面给子力清单，每个选项写明吃什么、是否将军、走完会被吃掉什么。平常每步的请求和那个实验只差两处（Jev 执黑时问句写「执黑」，选项键另抽一套），`xiangqi/play_xiangqi_check.py` 随机下 8 局逐字节比对过 381 步，不调 Jev。所以那一节的结论照样适用：整局大致是「能杀就杀、否则吃最大的子」的贪心水平，棋其实是棋库在下，Jev 只在算好的选项里挑。
+- **有两处是程序替它走的**：一步能将死或困毙对方时直接走，不问 Jev（能赢的着法一多它会分票，可能选出不赢的一步）；走了会因长将（或长捉）判负的着法不列给它，你走这种着法网页会拦下。页面上会写明哪步是程序走的、为什么。
+- 接口同样只有一个（`POST /api/move`），格式写在 `xiangqi/play_xiangqi.py` 开头。
 
 ## 每个脚本对应哪条结论
 
@@ -93,6 +113,8 @@ python3 games/play_chess.py                  # 不用装任何包，Python 3.9 �
 | `xiangqi/exp_xiangqi_board.py` | 看盘：识子四种写法、纯规则、规则落盘（含炮架、马腿、象眼、九宫、兵、帅将照面配对题）、受攻判断（第二版）、同请求多题对照 | 1,581 |
 | `xiangqi/exp_xiangqi_adapter.py` | 适配器四层对同信息规则（两种棋静态局面）、弱引擎标定、中国象棋整局、按标准规则重放 | 5,950 |
 | `xiangqi/exp_xiangqi_probe.py` | 发现线索的小对照：初探的旧格式下，国际象棋 SAN 的 `#` 换成 `+`、去掉 `+` 和 `#` 各会怎样；中国象棋那半用的是无效旧局面，数字不用（需 cchess 与 python-chess） | 66 |
+| `xiangqi/play_xiangqi.py` | **在浏览器里和 Jev 下中国象棋**（网页是旁边的 `play_xiangqi.html`）：请求用 `exp_xiangqi_adapter.py` 造，平常每步和整局实验只差执黑问句与选项键；一步能赢时直接走，长将着法不列给它（需 pyffish、cchess、python-chess，不需要引擎） | 每步 1 次 |
+| `xiangqi/play_xiangqi_check.py` | 上面那句的证据：随机下 8 局，381 次平常步的请求逐字节比对；另核对判结束的粗筛（110 局、约一万步与每步都问 pyffish 一致）、长将拦截、一步胜直接走、接着走与从头重放结果相同（约五分钟，依赖同上） | 不调 API |
 
 ## 两个教训
 
@@ -110,7 +132,7 @@ corpus.py       共用：测试语料
 integration/    接入实测 + 脚本
 chinese/        中文表现实测 + 脚本
 games/          打游戏实测 + 脚本 + 浏览器对弈（play_chess.py）
-xiangqi/        中国象棋实测 + 脚本 + 局面集
+xiangqi/        中国象棋实测 + 脚本 + 局面集 + 浏览器对弈（play_xiangqi.py）
 ```
 
 脚本跑完会在自己旁边写运行日志（`*_log.json` / `.jsonl`），这些是可重跑的产物，已在 `.gitignore` 里排除。

@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>和 Jev 下象棋</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f6f4ef; --panel: #ffffff; --ink: #1f1f22; --muted: #6c6c72; --line: #e2dfd6;
+    --accent: #2f6f4f; --bar: #a9cfb8; --bar-on: #2f6f4f; --warn: #b3261e; --warn-bg: #fdecea;
+    --wood: #e9cf9c; --grid: #5b3d1c; --piece: #f8eed8; --piece-edge: #9a7442; --red: #b3261e; --black: #1f1f22;
+    --last: rgba(47, 111, 79, .75); --hint: rgba(47, 111, 79, .8); --check: #d93025;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151619; --panel: #1f2125; --ink: #ececee; --muted: #9c9ca3; --line: #34373d;
+      --accent: #7cc39a; --bar: #3d6a51; --bar-on: #7cc39a; --warn: #f2b8b5; --warn-bg: #3a2322;
+      --wood: #b89663; --grid: #3a2812; --piece: #efe2c4; --piece-edge: #6e5230;
+      --last: rgba(24, 82, 52, .85); --hint: rgba(24, 82, 52, .9); --check: #c5221f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  }
+  main { max-width: 1060px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 18px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 540px) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 820px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+  #board { width: 100%; height: auto; display: block; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  #board .wood { fill: var(--wood); }
+  #board .grid line, #board .grid path { stroke: var(--grid); stroke-width: 1.3; fill: none; }
+  #board .grid .frame { stroke-width: 2.6; }
+  #board .river { fill: var(--grid); font: 26px "Kaiti SC", "STKaiti", "KaiTi", "BiauKai", serif; opacity: .8; }
+  #board .num { fill: var(--grid); font-size: 17px; }
+  #board .iccs { fill: var(--grid); font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; opacity: .6; }
+  #board .pc { transition: transform .22s ease; }
+  #board .pc .disc { fill: var(--piece); stroke: var(--piece-edge); stroke-width: 2; }
+  #board .pc .ring { fill: none; stroke-width: 1.4; }
+  #board .pc text { font: 700 30px "Kaiti SC", "STKaiti", "KaiTi", "BiauKai", "PingFang SC", "Noto Serif CJK SC", serif; }
+  #board .pc.red text { fill: var(--red); }
+  #board .pc.red .ring { stroke: var(--red); }
+  #board .pc.black text { fill: var(--black); }
+  #board .pc.black .ring { stroke: var(--black); }
+  #board .pc.mine { cursor: pointer; }
+  #board .pc.sel .disc { stroke: var(--accent); stroke-width: 4; }
+  #board .pc.gone { opacity: 0; transition: opacity .22s; }
+  #board .last-from { fill: var(--last); }
+  #board .last-to { fill: none; stroke: var(--last); stroke-width: 3; }
+  #board .check { fill: none; stroke: var(--check); stroke-width: 4; }
+  #board .dot { fill: var(--hint); cursor: pointer; }
+  #board .cap { fill: none; stroke: var(--hint); stroke-width: 4; cursor: pointer; }
+  #board .ban { fill: none; stroke: var(--check); stroke-width: 2.5; stroke-dasharray: 4 3; cursor: pointer; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .panel h2 { font-size: 15px; margin: 0 0 10px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg label { padding: 6px 14px; cursor: pointer; user-select: none; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg input:checked + span { color: var(--accent); font-weight: 600; }
+  .seg label:has(input:checked) { background: var(--line); }
+  button {
+    font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--ink); cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+  button:disabled { opacity: .5; cursor: default; }
+  #status { font-weight: 600; margin: 12px 0 0; min-height: 1.6em; }
+  #note { color: var(--warn); font-size: 14px; min-height: 0; }
+  #error { display: none; background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+  #error button { margin-left: 8px; padding: 2px 10px; }
+  .cand { margin: 8px 0; }
+  .cand .row { display: grid; grid-template-columns: 6.5em 1fr 3.2em; gap: 8px; align-items: center; }
+  .cand .mv { white-space: nowrap; }
+  .cand .track { display: block; height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+  .cand .fill { display: block; height: 100%; background: var(--bar); }
+  .cand.on .fill { background: var(--bar-on); }
+  .cand.on .mv { font-weight: 700; color: var(--accent); }
+  .cand .p { text-align: right; font-variant-numeric: tabular-nums; }
+  .cand .desc { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin-top: 2px; }
+  .meta { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .empty { color: var(--muted); margin: 0; }
+  #record { display: grid; grid-template-columns: 2.6em 1fr 1fr; gap: 0 8px; font-size: 14px; max-height: 220px; overflow-y: auto; margin-top: 8px; }
+  #record .no { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  #export-text { display: none; width: 100%; min-height: 140px; margin-top: 10px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+                 background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>和 Jev 下中国象棋</h1>
+  <p class="lead">你走一步，Jev 回一步。棋规和每步棋的后果由本机脚本算好，写进选项交给 Jev，它从中挑一步；右边列出它最看好的几步和各自的概率。</p>
+  <div class="layout">
+    <svg id="board" viewBox="0 0 584 680" role="img" aria-label="棋盘"></svg>
+    <div>
+      <div class="panel">
+        <div class="controls">
+          <span class="seg" role="radiogroup" aria-label="执哪一方">
+            <label><input type="radio" name="side" value="w" checked><span>我执红</span></label>
+            <label><input type="radio" name="side" value="b"><span>我执黑</span></label>
+          </span>
+          <button id="restart" class="primary">新开一局</button>
+          <button id="export">导出棋谱</button>
+        </div>
+        <div id="status" aria-live="polite">正在准备棋盘…</div>
+        <div id="note" aria-live="polite"></div>
+        <div id="error"><span id="error-text"></span><button id="retry">重试</button></div>
+        <textarea id="export-text" readonly aria-label="棋谱"></textarea>
+      </div>
+      <div class="panel">
+        <h2>Jev 这一步怎么挑的</h2>
+        <div id="cands"><p class="empty">Jev 还没走。</p></div>
+        <div id="cand-meta" class="meta"></div>
+      </div>
+      <div class="panel">
+        <h2>本局</h2>
+        <div id="stats" class="meta" style="margin-top:0">还没开始。</div>
+        <div id="record"></div>
+      </div>
+    </div>
+  </div>
+  <footer>
+    key 只在你本机运行的脚本里，这个网页拿不到。棋规在本机脚本里，用
+    <a href="https://github.com/fairy-stockfish/Fairy-Stockfish">pyffish</a>（Fairy-Stockfish 的 Python 绑定，GPL-3.0）；
+    中文记谱用 <a href="https://github.com/walker8088/cchess">cchess</a>（LGPL-3.0）。棋盘和棋子是本页自己画的。
+  </footer>
+</main>
+
+<script>
+// 网页只认这一个接口：发从开局起的全部着法，收走完后的局面（轮到 Jev 时本机脚本会先让它走一步）
+const API = '/api/move'
+const START_FEN = 'rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1'
+const NAMES = {K: '帅', A: '仕', B: '相', N: '马', R: '车', C: '炮', P: '兵', k: '将', a: '士', b: '象', n: '马', r: '车', c: '炮', p: '卒'}
+const M = 52, T = 62, S = 60          // 棋盘左边距、上边距、格宽（SVG 坐标）
+const SVGNS = 'http://www.w3.org/2000/svg'
+const $ = id => document.getElementById(id)
+const svg = $('board')
+
+let human = 'w', gameId = 0, g = null, selected = null, retryFn = null
+window.jevLog = []    // 每步 Jev 的耗时与花费，方便在控制台里看
+
+const other = s => s === 'w' ? 'b' : 'w'
+const sideName = s => s === 'w' ? '红' : '黑'
+const isRed = p => p === p.toUpperCase()
+
+// ---------------------------------------------------------------- 坐标
+// ICCS：纵线 a–i 从红方左手数起，横线 0–9 从红方底线数起。你执哪方，哪方就在下面。
+function xy(sq) { return ['abcdefghi'.indexOf(sq[0]), +sq[1]] }
+function screen(sq) {
+  const [x, y] = xy(sq)
+  const [c, r] = human === 'w' ? [x, 9 - y] : [8 - x, y]
+  return [M + c * S, T + r * S]
+}
+function sqAt(c, r) {
+  const [x, y] = human === 'w' ? [c, 9 - r] : [8 - c, r]
+  return 'abcdefghi'[x] + y
+}
+function parseFen(fen) {
+  const board = {}
+  fen.split(' ')[0].split('/').forEach((row, i) => {
+    let x = 0
+    for (const ch of row) {
+      if (/\d/.test(ch)) x += +ch
+      else board['abcdefghi'[x++] + (9 - i)] = ch
+    }
+  })
+  return board
+}
+
+// ---------------------------------------------------------------- 画棋盘
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(SVGNS, tag)
+  for (const k in attrs) e.setAttribute(k, attrs[k])
+  if (parent) parent.appendChild(e)
+  return e
+}
+function drawGrid() {
+  svg.innerHTML = ''
+  el('rect', {class: 'wood', x: 0, y: 0, width: 584, height: 680, rx: 10}, svg)
+  const grid = el('g', {class: 'grid'}, svg)
+  const X = c => M + c * S, Y = r => T + r * S
+  el('rect', {class: 'frame', x: X(0) - 7, y: Y(0) - 7, width: 8 * S + 14, height: 9 * S + 14, fill: 'none'}, grid)
+  for (let r = 0; r <= 9; r++) el('line', {x1: X(0), y1: Y(r), x2: X(8), y2: Y(r)}, grid)
+  for (let c = 0; c <= 8; c++) {
+    if (c === 0 || c === 8) el('line', {x1: X(c), y1: Y(0), x2: X(c), y2: Y(9)}, grid)
+    else {
+      el('line', {x1: X(c), y1: Y(0), x2: X(c), y2: Y(4)}, grid)
+      el('line', {x1: X(c), y1: Y(5), x2: X(c), y2: Y(9)}, grid)
+    }
+  }
+  for (const [r0, r1] of [[0, 2], [7, 9]]) {       // 九宫斜线
+    el('line', {x1: X(3), y1: Y(r0), x2: X(5), y2: Y(r1)}, grid)
+    el('line', {x1: X(5), y1: Y(r0), x2: X(3), y2: Y(r1)}, grid)
+  }
+  const marks = [[1, 2], [7, 2], [1, 7], [7, 7]]   // 炮位、兵位的角标
+  for (const c of [0, 2, 4, 6, 8]) marks.push([c, 3], [c, 6])
+  for (const [c, r] of marks) {
+    for (const dx of [-1, 1]) for (const dy of [-1, 1]) {
+      if ((c === 0 && dx < 0) || (c === 8 && dx > 0)) continue
+      const x = X(c), y = Y(r)
+      el('path', {d: `M${x + dx * 5} ${y + dy * 15}V${y + dy * 5}H${x + dx * 15}`}, grid)
+    }
+  }
+  const river = el('g', {class: 'river', 'text-anchor': 'middle', 'dominant-baseline': 'central'}, svg)
+  el('text', {x: X(2), y: Y(4.5)}, river).textContent = '楚　河'
+  el('text', {x: X(6), y: Y(4.5)}, river).textContent = '汉　界'
+  // 纵线号：下面是你这方的（从你的右手数起），上面是对方的；再加一行 ICCS 字母、左边一列 ICCS 横线号
+  const red = '九八七六五四三二一', black = '１２３４５６７８９'
+  const labels = el('g', {'text-anchor': 'middle', 'dominant-baseline': 'central'}, svg)
+  for (let c = 0; c <= 8; c++) {
+    const bottom = human === 'w' ? red[c] : black[8 - c]
+    const top = human === 'w' ? black[c] : red[8 - c]
+    el('text', {class: 'num', x: X(c), y: Y(9) + 44}, labels).textContent = bottom
+    el('text', {class: 'num', x: X(c), y: Y(0) - 44}, labels).textContent = top
+    el('text', {class: 'iccs', x: X(c), y: Y(9) + 66}, labels).textContent = sqAt(c, 9)[0]
+  }
+  for (let r = 0; r <= 9; r++) el('text', {class: 'iccs', x: 14, y: Y(r)}, labels).textContent = sqAt(0, r)[1]
+  el('g', {id: 'marks'}, svg)
+  el('g', {id: 'pieces'}, svg)
+  el('g', {id: 'hints'}, svg)
+}
+
+function drawPieces() {
+  const layer = $('pieces')
+  layer.innerHTML = ''
+  for (const [sq, p] of Object.entries(g.board)) {
+    const [x, y] = screen(sq)
+    const mine = isRed(p) === (human === 'w')
+    const e = el('g', {class: 'pc ' + (isRed(p) ? 'red' : 'black') + (mine ? ' mine' : ''), 'data-sq': sq, 'data-piece': p}, layer)
+    e.style.transform = `translate(${x}px, ${y}px)`
+    el('circle', {class: 'disc', r: 27}, e)
+    el('circle', {class: 'ring', r: 22.5}, e)
+    const t = el('text', {'text-anchor': 'middle', 'dominant-baseline': 'central', y: 1}, e)
+    t.textContent = NAMES[p]
+  }
+}
+
+function drawMarks() {
+  const layer = $('marks')
+  layer.innerHTML = ''
+  const last = g.moves[g.moves.length - 1]
+  if (last) {
+    const [fx, fy] = screen(last.slice(0, 2)), [tx, ty] = screen(last.slice(2))
+    el('circle', {class: 'last-from', cx: fx, cy: fy, r: 7}, layer)
+    el('circle', {class: 'last-to', cx: tx, cy: ty, r: 31}, layer)
+  }
+  if (g.check) {
+    const king = g.turn === 'w' ? 'K' : 'k'
+    const sq = Object.keys(g.board).find(s => g.board[s] === king)
+    if (sq) { const [x, y] = screen(sq); el('circle', {class: 'check', cx: x, cy: y, r: 31}, layer) }
+  }
+}
+
+function drawHints() {
+  const layer = $('hints')
+  layer.innerHTML = ''
+  for (const e of svg.querySelectorAll('.pc.sel')) e.classList.remove('sel')
+  if (!selected) return
+  const pc = svg.querySelector(`.pc[data-sq="${selected}"]`)
+  if (pc) pc.classList.add('sel')
+  for (const m of g.legal.filter(m => m.move.startsWith(selected))) {
+    const to = m.move.slice(2), [x, y] = screen(to)
+    if (m.banned) el('circle', {class: 'ban', cx: x, cy: y, r: g.board[to] ? 30 : 9}, layer)
+    else if (g.board[to]) el('circle', {class: 'cap', cx: x, cy: y, r: 30}, layer)
+    else el('circle', {class: 'dot', cx: x, cy: y, r: 8}, layer)
+  }
+}
+
+function drawAll() { drawPieces(); drawMarks(); drawHints() }
+
+// 在盘面上把 from 的子挪到 to（带动画），被吃的子淡出
+function slide(from, to) {
+  const pc = svg.querySelector(`.pc[data-sq="${from}"]`)
+  const victim = svg.querySelector(`.pc[data-sq="${to}"]`)
+  if (victim) victim.classList.add('gone')
+  if (pc) {
+    const [x, y] = screen(to)
+    pc.parentNode.appendChild(pc)      // 移到最上层，滑过别的子时不被压住
+    pc.getBoundingClientRect()
+    pc.style.transform = `translate(${x}px, ${y}px)`
+  }
+  g.board[to] = g.board[from]
+  delete g.board[from]
+  return new Promise(r => setTimeout(r, 240))
+}
+
+// ---------------------------------------------------------------- 点棋盘
+svg.addEventListener('click', ev => {
+  if (!g || g.end || g.busy || g.turn !== human) return
+  const pt = svg.createSVGPoint()
+  pt.x = ev.clientX; pt.y = ev.clientY
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse())
+  const c = Math.round((p.x - M) / S), r = Math.round((p.y - T) / S)
+  const near = c >= 0 && c <= 8 && r >= 0 && r <= 9 && Math.hypot(p.x - M - c * S, p.y - T - r * S) <= 30
+  const sq = near ? sqAt(c, r) : null
+  setNote('')
+  if (selected && sq) {
+    const m = g.legal.find(m => m.move === selected + sq)
+    if (m) {
+      if (m.banned) { setNote('这步会形成长将（或长捉），按规则要判负，换一步吧。'); return }
+      selected = null
+      drawHints()
+      return humanMove(m)
+    }
+  }
+  const piece = sq && g.board[sq]
+  selected = piece && isRed(piece) === (human === 'w') && selected !== sq ? sq : null
+  if (selected && !g.legal.some(m => m.move.startsWith(selected))) setNote('这个子现在没有合法的走法。')
+  drawHints()
+})
+
+async function humanMove(m) {
+  const id = gameId
+  g.busy = true
+  await slide(m.move.slice(0, 2), m.move.slice(2))
+  if (id !== gameId) return
+  g.moves.push(m.move)
+  g.record.push(m.text)
+  g.turn = other(human)
+  g.check = false
+  g.legal = []
+  drawAll()
+  renderRecord()
+  request()
+}
+
+// ---------------------------------------------------------------- 和本机脚本通信
+async function request() {
+  const id = gameId, jevToMove = g.turn !== human
+  g.busy = true
+  hideError()
+  setStatus(jevToMove ? 'Jev 思考中…' : '正在准备棋盘…')
+  const t0 = performance.now()
+  const tick = setInterval(() => {   // 平时 1 秒上下；偶尔卡住时让人看得到在等
+    const sec = Math.round((performance.now() - t0) / 1000)
+    if (id === gameId && jevToMove && sec >= 3) setStatus('Jev 思考中…已等 ' + sec + ' 秒（OpenRouter 偶尔会卡一下，20 秒没回会自动重发一次）')
+  }, 1000)
+  let res
+  try {
+    const r = await fetch(API, {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({moves: g.moves, jev: other(human), game: g.game})})
+    res = await r.json().catch(() => ({error: '本地脚本回了看不懂的内容（HTTP ' + r.status + '）'}))
+    if (!r.ok || res.error) throw new Error(res.error || 'HTTP ' + r.status)
+  } catch (e) {
+    clearInterval(tick)
+    if (id !== gameId) return
+    setStatus(jevToMove ? 'Jev 这一步没走成' : '没连上本地脚本')
+    showError(e.message === 'Failed to fetch' ? '连不上本地脚本，确认 play_xiangqi.py 还开着' : e.message, request)
+    return
+  }
+  clearInterval(tick)
+  if (id !== gameId) return          // 等回答的时候已经重开了一局
+  const wait = (performance.now() - t0) / 1000
+  if (res.jev) {
+    const j = res.jev
+    await slide(j.move.slice(0, 2), j.move.slice(2))
+    if (id !== gameId) return
+    if (!j.auto) {
+      g.model = j.model
+      g.stats.asked++; g.stats.wait += wait; g.stats.cost += j.cost || 0
+    }
+    g.stats.n++
+    window.jevLog.push({game: id, ply: res.moves.length, move: j.move, text: j.text, auto: j.auto, wait,
+                        elapsed: j.elapsed, tokens: j.input_tokens, cost: j.cost, options: j.options, legal: j.legal})
+    renderCands(j, wait, res.end)
+  }
+  Object.assign(g, {moves: res.moves, record: res.record, board: parseFen(res.fen), turn: res.turn,
+                    check: res.check, legal: res.legal, end: res.end, busy: false})
+  selected = null
+  drawAll()
+  renderRecord()
+  renderStats()
+  if (g.end) finish()
+  else setStatus('轮到你走（你执' + sideName(human) + '）')
+}
+
+// ---------------------------------------------------------------- 右边几块
+const setStatus = t => { $('status').textContent = t }
+const setNote = t => { $('note').textContent = t }
+function showError(text, retry) {
+  $('error-text').textContent = text
+  retryFn = retry || null
+  $('retry').style.display = retry ? '' : 'none'
+  $('error').style.display = 'block'
+}
+const hideError = () => { $('error').style.display = 'none' }
+
+function renderCands(j, wait, end) {
+  const box = $('cands')
+  box.innerHTML = ''
+  if (j.auto) {
+    const p = document.createElement('p')
+    p.className = 'empty'
+    if (j.auto === 'win') {
+      p.textContent = '这步' + j.text + '能直接' + (end && end.reason === '困毙' ? '困毙' : '将死') +
+        '对方。研究发现能赢的着法一多，Jev 的票会分散，可能选出不赢的一步，所以一步能赢时由程序直接走，没问 Jev。'
+    } else {
+      p.textContent = '这一步只剩 ' + j.text + ' 可走' + (j.legal > 1 ? '（另外 ' + (j.legal - 1) + ' 步走了会被判长将或长捉）' : '') + '，程序直接走，没问 Jev。'
+    }
+    box.appendChild(p)
+    $('cand-meta').textContent = ''
+    return
+  }
+  for (const c of j.candidates) {
+    const row = document.createElement('div')
+    row.className = 'cand' + (c.move === j.move ? ' on' : '')
+    row.innerHTML = '<div class="row"><span class="mv"></span><span class="track"><span class="fill"></span></span><span class="p"></span></div><div class="desc"></div>'
+    row.querySelector('.mv').textContent = c.text + (c.move === j.move ? ' ✓' : '')
+    row.querySelector('.fill').style.width = (c.p * 100).toFixed(1) + '%'
+    row.querySelector('.p').textContent = c.p.toFixed(2)
+    row.querySelector('.desc').textContent = 'Jev 看到的选项：' + c.desc
+    box.appendChild(row)
+  }
+  const conf = typeof j.confidence === 'number' ? ' · confidence ' + j.confidence.toFixed(2) : ''
+  const cut = j.options < j.legal ? '（另有 ' + (j.legal - j.options) + ' 步走了会被判长将或长捉，没列给它）' : ''
+  $('cand-meta').textContent = '从 ' + j.options + ' 个选项里挑了 ' + j.text + cut + conf +
+    ' · 等了 ' + wait.toFixed(2) + ' 秒 · 输入 ' + j.input_tokens + ' token · $' + (j.cost || 0).toFixed(7)
+}
+
+function renderStats() {
+  const s = g.stats
+  $('stats').textContent = s.n
+    ? 'Jev 走了 ' + s.n + ' 步' + (s.asked < s.n ? '（其中 ' + (s.n - s.asked) + ' 步程序直接走）' : '') +
+      (s.asked ? ' · 问了它 ' + s.asked + ' 次，平均每次等 ' + (s.wait / s.asked).toFixed(2) + ' 秒 · 共花 $' + s.cost.toFixed(6) : '')
+    : 'Jev 还没走。'
+}
+
+function renderRecord() {
+  const box = $('record')
+  box.innerHTML = ''
+  for (let i = 0; i < g.record.length; i += 2) {
+    const no = document.createElement('span'), r = document.createElement('span'), b = document.createElement('span')
+    no.className = 'no'
+    no.textContent = (i / 2 + 1) + '.'
+    r.textContent = g.record[i]
+    b.textContent = g.record[i + 1] || ''
+    box.append(no, r, b)
+  }
+  box.scrollTop = box.scrollHeight
+}
+
+function resultText(end) {
+  if (!end) return '未完'
+  return (end.winner ? sideName(end.winner) + '胜' : '和棋') + '（' + end.reason + '）'
+}
+
+function finish() {
+  const e = g.end
+  let text
+  if (!e.winner) text = e.reason
+  else {
+    const you = e.winner === human
+    if (e.reason === '将死') text = you ? '你将死了 Jev' : 'Jev 将死了你'
+    else if (e.reason === '困毙') text = you ? '你困毙了 Jev（它没被将军，却已无棋可走；中国象棋里这也算赢）' : 'Jev 困毙了你（你没被将军，却已无棋可走）'
+    else text = (you ? 'Jev ' : '你') + e.reason
+  }
+  setStatus('对局结束：' + text + ' · ' + (e.winner ? sideName(e.winner) + '胜' : '和棋'))
+}
+
+// 本地时间 YYYY-MM-DDTHH:MM:SS；toISOString 是 UTC，东八区早上八点前会差一天
+function localTime() {
+  const t = new Date()
+  return new Date(t - t.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
+}
+
+function exportRecord() {
+  const jev = 'Jev' + (g.model ? '（' + g.model + '）' : '')
+  const lines = ['和 Jev 下中国象棋', '日期：' + localTime().replace('T', ' ').slice(0, 16),
+                 '红方：' + (human === 'w' ? '你' : jev), '黑方：' + (human === 'b' ? '你' : jev),
+                 '结果：' + resultText(g.end), '']
+  for (let i = 0; i < g.record.length; i += 2) lines.push((i / 2 + 1) + '. ' + g.record[i] + (g.record[i + 1] ? '　' + g.record[i + 1] : ''))
+  lines.push('', 'ICCS 坐标：' + g.moves.join(' '))
+  const text = lines.join('\n')
+  $('export-text').value = text
+  $('export-text').style.display = 'block'
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([text + '\n'], {type: 'text/plain;charset=utf-8'}))
+  a.download = 'jev-xiangqi-' + localTime().replace(/[:T]/g, '-') + '.txt'
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+function newGame() {
+  gameId++
+  human = document.querySelector('input[name=side]:checked').value
+  const id = new Uint8Array(8)
+  crypto.getRandomValues(id)
+  g = {game: Array.from(id, x => x.toString(36).padStart(2, '0')).join(''), moves: [], record: [], board: parseFen(START_FEN),
+       turn: 'w', check: false, legal: [], end: null, busy: true, model: null, stats: {n: 0, asked: 0, wait: 0, cost: 0}}
+  selected = null
+  hideError()
+  setNote('')
+  $('export-text').style.display = 'none'
+  $('cands').innerHTML = '<p class="empty">Jev 还没走。</p>'
+  $('cand-meta').textContent = ''
+  drawGrid()
+  drawAll()
+  renderRecord()
+  renderStats()
+  request()
+}
+
+$('restart').onclick = newGame
+$('export').onclick = exportRecord
+$('retry').onclick = () => retryFn && retryFn()
+for (const r of document.querySelectorAll('input[name=side]')) {
+  r.onchange = () => g && g.moves.length ? setStatus('点「新开一局」换边') : newGame()
+}
+newGame()
+</script>
+</body>
+</html>

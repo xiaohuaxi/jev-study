@@ -55,7 +55,7 @@ v2（独立审查后，只改分析、不重发请求）：
 # 让本脚本从任意目录都能找到仓库根部的 jevkit.py
 import sys as _sys, pathlib as _pathlib
 _sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
-import fcntl, json, math, os, random, re, statistics, sys, time
+import json, math, os, random, re, statistics, sys, time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -920,6 +920,7 @@ def game_id(player, opp, i):
 
 
 def append_lines(path, recs):
+    import fcntl      # 只在这里用；放到顶上的话 Windows 上连 import 本文件都不行（网页版 play_xiangqi.py 要 import 它）
     with open(path, 'a', encoding='utf-8') as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         for r in recs:
