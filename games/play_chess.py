@@ -193,14 +193,16 @@ def send(body):
         sock.settimeout(left())
         resp = conn.getresponse()
         data = b''
-        while True:
+        # 读完整个回包 http.client 会自己收尾；回包带 Connection: close 时连 socket 一起关掉，再碰 sock 就报错
+        while not resp.isclosed():
             if time.time() - t0 >= DEADLINE:
                 raise TimeoutError('%d 秒没收完' % DEADLINE)
             sock.settimeout(left())
             chunk = resp.read1(65536)
             if not chunk:
-                return resp.status, data, time.time() - t0
+                break
             data += chunk
+        return resp.status, data, time.time() - t0
     finally:
         conn.close()
 
@@ -233,7 +235,7 @@ def call(st, q):
                 STATS['cost'] += (d.get('usage') or {}).get('cost') or 0.0
             return d
         last = (status, data.decode('utf-8', 'replace')[:300])
-        if status not in (429, 500, 502, 503, 529):
+        if status not in (429, 500, 502, 503, 504, 520, 529):     # 与 jevkit.py 重试的状态码相同
             break
         time.sleep(1)
     return {'_error': (last[0], '%s（一共试了 %d 次）' % (last[1], i + 1))}
