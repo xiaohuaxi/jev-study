@@ -1,10 +1,10 @@
 # jev-study
 
-试着把 TypeSafe 的 Jev 接进真实项目，顺手把每个结论都测了一遍。**报告里的每个数字，这里都有对应脚本可以重跑。**
+试着把 TypeSafe 的 Jev 接进真实项目，顺手把每个结论都测了一遍。**报告里的主要数字，这里都有对应脚本可以重跑；个别没收进脚本的，报告里当场注明。**
 
 > A hands-on study of [Jev](https://typesafe.ai/) (TypeSafe's "System One" model) accessed through OpenRouter:
-> integration, Chinese-language behaviour, game loops, and Chinese chess (xiangqi). Every figure in the reports is
-> reproducible by the scripts in this repo. Reports are in Chinese. ~11,450 API calls, about $0.73 total.
+> integration, Chinese-language behaviour, game loops, and Chinese chess (xiangqi). Most figures in the reports are
+> reproducible by the scripts in this repo; the few that are not say so where they appear. Reports are in Chinese. ~11,450 API calls, about $0.73 total.
 > There are also one-command browser games: play chess (`python3 games/play_chess.py`) or Chinese chess
 > (`python3 xiangqi/play_xiangqi.py`) against Jev.
 
@@ -14,7 +14,7 @@
 
 | 专题 | 读什么 | 规模 |
 |---|---|---|
-| [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 730 次请求 |
+| [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 160 次请求（与中文专题合计约 730 次） |
 | [中文表现](chinese/README.md) | 中英对照、绕弯表达、档位文案对打分的影响、汉字容量、长文定位 | 约 570 次请求 |
 | [打游戏](games/README.md) | GridWorld、国际象棋、中国象棋初探（结论已被下面的中国象棋专题改写）、实时循环的频率与成本、一次问几百个问题；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 2,410 次请求（含复核和问法对比）；做网页版另用约 790 次，不在可复跑的脚本里 |
 | [中国象棋](xiangqi/README.md) | 初探里「国际象棋一步杀 10/10、中国象棋 2/32」的差距从哪来（选项记谱里的 `#`、无效的旧局面）；读盘、规则落到盘面、谁能吃谁；接上适配器后整局能下到什么水平；另有[浏览器里和 Jev 下中国象棋](#在浏览器里和-jev-下棋)的网页版 | 约 10,900 次请求（含作废批次，作废的不在可复跑的脚本里）；做网页版另用约 490 次，不在可复跑的脚本里 |
@@ -39,9 +39,11 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 `xiangqi/` 下的脚本要 `python3 -m pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`；引擎路径可用环境变量 `FAIRY_STOCKFISH` 指定，不设就从 PATH 里找）；其中 `xiangqi/exp_xiangqi_probe.py` 只要 cchess 与 chess，网页对弈 `xiangqi/play_xiangqi.py` 和它的核对脚本只要这三个库、不需要引擎。Python 3.9 起能跑，报告里的数字是在 3.13 上跑的。
 
+如果 pip 报 `externally-managed-environment`（Homebrew 的 Python、较新的 Debian / Ubuntu 系统 Python 会这样），先在仓库根目录建个虚拟环境：`python3 -m venv .venv && . .venv/bin/activate`，之后在这个终端里照常用上面的命令（建环境时若提示缺 ensurepip，先装系统的 python3-venv 包）。
+
 **会真的花钱。** 全套约 11,450 次请求、$0.73 上下，其中 `xiangqi/` 的四个脚本约 9,215 次、约 $0.54（中国象棋报告的约 10,900 次另含作废批次，作废的不在脚本里）。单次请求最贵的是塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）；按整个脚本算最贵的是 `xiangqi/exp_xiangqi_adapter.py`（5,950 次，大头是整局）。
 
-**`jev.spend()` 打印的「失败」计数不一定是出错。** 探上限、探非法参数的实验本来就期望收到 4xx。
+**`jevkit.spend()`（脚本里写作 `jev.spend()`）打印的「失败」计数不一定是出错。** 探上限、探非法参数的实验本来就期望收到 4xx。
 
 ## 在浏览器里和 Jev 下棋
 
@@ -67,6 +69,8 @@ export OPENROUTER_API_KEY="sk-or-v1-..."     # 或 API_KEY_OPENROUTER
 python3 -m pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2    # 不需要引擎
 python3 xiangqi/play_xiangqi.py              # Python 3.9 起
 ```
+
+如果 pip 报 `externally-managed-environment`（Homebrew 的 Python、较新的 Debian / Ubuntu 系统 Python 会这样），先在仓库根目录建个虚拟环境：`python3 -m venv .venv && . .venv/bin/activate`，之后在这个终端里照常用上面的命令（建环境时若提示缺 ensurepip，先装系统的 python3-venv 包）。
 
 用法和上面一样：自动打开浏览器，点棋子再点落点，Jev 回一步，右边列出它最看好的五步、各自的概率和它看到的选项文字。能选执红或执黑、新开一局、导出棋谱（中文记谱加 ICCS 坐标）；将死、困毙、长将判负、三次重复、一百个半回合没有吃子都会正常结束。按 Ctrl+C 结束，终端会打印这次请求了几次、花了多少。
 
