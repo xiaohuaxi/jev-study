@@ -21,7 +21,8 @@
   en-N0（仅中国象棋）       英文提问 + 英文 state + 中文记谱；与 U0、N0、en-U0 组成「语言 × 写法」2×2
   noul                      每个合法着法一道 noul「走完这一步，对方是否被将死？」，一次请求问完，取最大
   U2-cells / U2-pieces      补测：U2 描述 + 格子表 / 子力清单 state，其余与 U2 完全相同（同一套键与顺序）。
-                            FEN 下 U2 分不开「读不出盘」与「算不出哪个将军是杀」，这两臂把读盘去掉再看 k 分档与免费基线
+                            FEN 下 U2 分不开「读不出盘」与「算不出哪个将军是杀」，这两臂把读盘去掉再看 k 分档与免费基线；
+                            报告第六节那张 k·份额表（FEN / 格子表 / 子力清单三行）由 report 第 4d 节逐格输出
   抖动                      每棋种 10 个局面（8 自然 + 2 教科书）× U0 × rep 1、2（换 rep 换键↔着法映射与选项顺序）
   旧格式复现                初探原格式：选项键是坐标、state 带合法着法清单；中国象棋照 games/exp_game_xiangqi.py 的
                             C1（中文记谱 / 带吃子的坐标描述）与 C2（FEN / 子力清单）各跑两轮，共 32 次，与旧的
@@ -799,6 +800,31 @@ def report(out=None, path=None, nocheck=False):
         P('| %s | %s |' % (ARM_ZH[arm], ' | '.join(
             fsig(boot2(dd[XQ][key], dd[CH][key], lambda a, b: mean_d(a) - mean_d(b), 'sdd' + arm + key))
             for key in ('hit', 'p', 'check_share_k'))))
+    P('')
+
+    # 4d. 报告第六节「标了将军以后，在将军着法里挑杀着」那张表：三种盘面各一行，逐格出数。
+    # 种子沿用第 4 节「重叠档」与 4c 节同一格的名字（'ksh' / 'sk' / 'sf' + 棋种 + 臂 + 范围），同一格两处的数逐字相同；
+    # FEN 行按同一规则取名。
+    K2 = 'k ≥ 2'
+    P('### 4d. 报告第六节的 k·份额表（FEN / 格子表 / 子力清单）\n')
+    P('k·份额与「与随手挑的命中差」只取 k ≥ 2 的局面（k = 1 时 U2 只有杀着一条带「将军」，等于给答案）；命中差 = 命中 − 1/k，按局面配对。'
+      '两种棋命中率差取重叠档 k 2–6、按档加权，同上面「重叠档」表。格子表、子力清单两行与第 4、4c 节同一格逐字相同。'
+      '±半宽 = 两种棋命中率差区间宽度的一半。\n')
+    P('| 盘面 | 局面（k ≥ 2 中/国；k 2–6 中/国） | 中国象棋 k·份额（k ≥ 2） | 与随手挑的命中差（中国象棋，k ≥ 2） | 两种棋命中率差（k 2–6，按档加权） | ±半宽 | 国际象棋 k·份额（k ≥ 2） |')
+    P('|---|---|---|---|---|---:|---|')
+    for arm, lab in (('U2', 'FEN'), ('U2-cells', '格子表'), ('U2-pieces', '子力清单')):
+        xa = [r for r in sel(R, XQ, arm) if r['k_checks'] >= 2]
+        ca = [r for r in sel(R, CH, arm) if r['k_checks'] >= 2]
+        fb = [{'cl': r['cl'], 'd': r['hit'] - 1 / r['k_checks']} for r in xa]
+        a = [r for r in sel(R, XQ, arm) if 2 <= r['k_checks'] <= 6]
+        b = [r for r in sel(R, CH, arm) if 2 <= r['k_checks'] <= 6]
+        xd = boot2(a, b, strat_diff('hit'), 'ksh' + arm)
+        P('| %s | %d/%d；%d/%d | %s | %s | %s | %.2f | %s |' % (
+            lab, len(xa), len(ca), len(a), len(b),
+            fci(boot1(xa, lambda s: mean(s, 'check_share_k'), 'sk' + XQ + arm + K2)),
+            fsig(boot1(fb, mean_d, 'sf' + XQ + arm + K2)),
+            fsig(xd), (xd[2] - xd[1]) / 2,
+            fci(boot1(ca, lambda s: mean(s, 'check_share_k'), 'sk' + CH + arm + K2))))
     P('')
 
     # 5. U1 按杀着是否吃子；按杀着棋子

@@ -36,7 +36,7 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 要装东西的只有这几个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/exp_game_chess.py` 和 `games/exp_game_chess_prompt.py` 要 `pip install chess`，`games/exp_game_xiangqi.py` 要 `pip install cchess chess`，`games/play_chess_check.py` 要 `pip install chess` 和 Node。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
 
-`xiangqi/` 下的脚本要 `pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`；引擎路径可用环境变量 `FAIRY_STOCKFISH` 指定，不设就从 PATH 里找）；其中 `xiangqi/exp_xiangqi_probe.py` 只要 cchess 与 chess。最低要 Python 3.9：在系统自带的 3.9.6 上逐个编译通过，各实验的 `report` 子命令和 `xiangqi/boards.py selftest --quick` 都能跑，只是个别数字末位和 3.13 上的输出差 0.01（推测是 3.12 起浮点求和的算法变了）。报告里的数字是在 3.13.15 上跑的；3.10–3.12 没试，发请求的 `run` 也只在 3.13 上跑过。
+`xiangqi/` 下的脚本要 `pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`；引擎路径可用环境变量 `FAIRY_STOCKFISH` 指定，不设就从 PATH 里找）；其中 `xiangqi/exp_xiangqi_probe.py` 只要 cchess 与 chess。Python 3.9 起能跑，报告里的数字是在 3.13 上跑的。
 
 **会真的花钱。** 全套约 11,450 次请求、$0.73 上下，其中 `xiangqi/` 的四个脚本约 9,215 次、约 $0.54（中国象棋报告的约 10,900 次另含作废批次，作废的不在脚本里）。单次请求最贵的是塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）；按整个脚本算最贵的是 `xiangqi/exp_xiangqi_adapter.py`（5,950 次，大头是整局）。
 
