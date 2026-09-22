@@ -14,7 +14,7 @@
 | 实验 C | 适配器阶梯（两棋种静态局面）、中国象棋整局 | 6,065 | $0.371 | 含开跑 115 次后作废的整局（盘面用 FEN 的那一版，$0.0057） |
 | 发现线索的小对照 | SAN 里的 `#` 是不是 10/10 的来源 | 66 | 不到 $0.003 | 中国象棋那半用的是无效旧局面，不用；国际象棋那半只在第一节用来说明 `#` 撑起了初探 10/10 的高概率和高置信（每题两次、旧格式，只当线索）；脚本 `exp_xiangqi_probe.py` |
 
-**复现：** 脚本都在本目录，依赖 Python 3.13 + `pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`）。`boards.py` 是公共底座（规则、描述、盘面写法、选项键、引擎封装，`python boards.py selftest` 跑全部断言），`make_positions.py` 生成局面集 `xiangqi_positions.json`；三个实验分别是 `exp_xiangqi_mate.py`（A 与补测 1 的一步杀部分）、`exp_xiangqi_board.py`（B 与两轮补测的看盘部分）、`exp_xiangqi_adapter.py`（C）。每个实验脚本都有 `report` 子命令，只读日志出表；实验 A、B 和 C 的静态部分还核对日志里的请求与脚本当前构造的逐字相同，整局部分核对回包与着法的对应和选项文字的解析。日志不入库，新克隆要先跑一遍。
+**复现：** 脚本都在本目录，依赖 Python 3.13 + `python3 -m pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`）。`boards.py` 是公共底座（规则、描述、盘面写法、选项键、引擎封装，`python boards.py selftest` 跑全部断言），`make_positions.py` 生成局面集 `xiangqi_positions.json`；三个实验分别是 `exp_xiangqi_mate.py`（A 与补测 1 的一步杀部分）、`exp_xiangqi_board.py`（B 与两轮补测的看盘部分）、`exp_xiangqi_adapter.py`（C）。每个实验脚本都有 `report` 子命令，只读日志出表；实验 A、B 和 C 的静态部分还核对日志里的请求与脚本当前构造的逐字相同，整局部分核对回包与着法的对应和选项文字的解析。日志不入库，新克隆要先跑一遍。
 
 ## 先给结论
 

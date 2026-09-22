@@ -4,7 +4,7 @@
 局面集由 make_positions.py 生成，存在旁边的 xiangqi_positions.json（两棋种都在里面）。
 
 依赖（本文件用 Python 3.13 跑过）：
-  pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2
+  python3 -m pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2
   引擎 Fairy-Stockfish 14.0.1（brew install fairy-stockfish）；路径可用环境变量 FAIRY_STOCKFISH 指定。
 
 约定（实验脚本都按这个来）：

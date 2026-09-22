@@ -1,6 +1,6 @@
 """换个问法，Jev 会不会下得好一点：提示"有杀"、叫它"以赢棋为目标"、具体提醒"别被白吃"。
 
-需要 python-chess：pip install chess。两组，问法都走 exp_game_chess.py 里原样的 ask()：
+需要 python-chess：python3 -m pip install chess。两组，问法都走 exp_game_chess.py 里原样的 ask()：
   A 一步杀：exp_game_chess.py 的 5 个局面 + 随机对局里抽的 35 个有一步杀的局面（固定种子），
     四种问法各问一次，看选没选中将死着法。exp_game_chess.py 的 A 组在问题末尾加了
     "注意：这里存在一步将死的机会。"，网页对弈版（play_chess.py）不加，这里两种都测。

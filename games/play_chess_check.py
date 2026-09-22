@@ -1,6 +1,6 @@
 """逐字比对：网页版（play_chess.py）和实验（exp_game_chess.py）发给 Jev 的请求体是否一模一样。
 
-不调 Jev、不花钱、不需要 key。需要 python-chess（pip install chess）和 Node（在 Python 3.13、
+不调 Jev、不花钱、不需要 key。需要 python-chess（python3 -m pip install chess）和 Node（在 Python 3.13、
 Node v24.20.0 上跑过）；每次跑都要联网，从 jsdelivr 下载网页用的那份 chess.js 并核对哈希。
 
     python3 games/play_chess_check.py            # 默认随机下 200 局，外加实验里的局面和几个边角局面

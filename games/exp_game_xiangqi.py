@@ -1,6 +1,6 @@
 """中国象棋初探：把国际象棋那套「棋库枚举合法着法 → Jev 在清单里挑」原样换成中国象棋。
 
-需要 cchess 与 python-chess：pip install cchess chess
+需要 cchess 与 python-chess：python3 -m pip install cchess chess
 （本文件用 Python 3.13 + cchess 1.25.5 + chess 1.11 跑过）。
 
   A 看盘：同一局面问六个客观是非题（谁还有车、黑方是否被将军……），真值由棋库给；

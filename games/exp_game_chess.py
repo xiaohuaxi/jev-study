@@ -1,6 +1,6 @@
 """国际象棋实测：文献版调研（未收录本仓库） 说这是最容易完整复现的 Jev 游戏案例，这里真跑一遍。
 
-需要 python-chess：pip install chess（本文件用 Python 3.13 + chess 1.11 跑过）。
+需要 python-chess：python3 -m pip install chess（本文件用 Python 3.13 + chess 1.11 跑过）。
 三组：
   A 杀棋一步：每个局面都用 python-chess 断言「只有一步能将死」，看 Jev 找不找到；
   B 两层物质搜索给出的最佳着法：看 Jev 选中率、以及平均亏多少子；
