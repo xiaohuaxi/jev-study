@@ -14,3 +14,6 @@ package-lock.json
 # 脚本跑完写在自己旁边的运行日志（可重跑，不入库）
 *_log.json
 *_log.jsonl
+
+# 本地产物（对局录屏等，体积大，不入库）
+/artifacts/
