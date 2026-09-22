@@ -33,7 +33,7 @@ def call(state, questions, model=MODEL, retries=3):
             return d
         except urllib.error.HTTPError as e:
             last = (e.code, e.read().decode()[:300])
-            if e.code in (429, 529, 500, 502, 503):
+            if e.code in (429, 529, 500, 502, 503, 504, 520):
                 time.sleep(1.5 * (attempt + 1)); continue
             break
         except Exception as e:  # 网络抖动
