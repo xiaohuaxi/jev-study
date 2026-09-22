@@ -15,7 +15,7 @@
 |---|---|---|
 | [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 730 次请求 |
 | [中文表现](chinese/README.md) | 中英对照、绕弯表达、档位文案对打分的影响、汉字容量、长文定位 | 约 570 次请求 |
-| [打游戏](games/README.md) | GridWorld、国际象棋、中国象棋初探、实时循环的频率与成本、一次问几百个问题；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 1,230 次请求（含复核）；做网页版另用约 790 次，不在可复跑的脚本里 |
+| [打游戏](games/README.md) | GridWorld、国际象棋、中国象棋初探、实时循环的频率与成本、一次问几百个问题；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 2,410 次请求（含复核和问法对比）；做网页版另用约 790 次，不在可复跑的脚本里 |
 
 全部经 OpenRouter 实测，只覆盖模型快照 `typesafe/jev-1.13-20260917`；官方直连、Vercel AI Gateway、Cloudflare Workers AI 都没跑。其余没跑到的，各报告文末的「未验证」一节列了。
 
@@ -33,7 +33,7 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 **多数脚本只用标准库，Python 3.9 就能跑**——调 Jev 是直接发 HTTP 请求，不经过官方 SDK（在系统自带的 3.9.6 上实跑验证过）。
 
-要装东西的只有这几个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/exp_game_chess.py` 要 `pip install chess`，`games/exp_game_xiangqi.py` 要 `pip install cchess chess`，`games/play_chess_check.py` 要 `pip install chess` 和 Node。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
+要装东西的只有这几个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/exp_game_chess.py` 和 `games/exp_game_chess_prompt.py` 要 `pip install chess`，`games/exp_game_xiangqi.py` 要 `pip install cchess chess`，`games/play_chess_check.py` 要 `pip install chess` 和 Node。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
 
 **会真的花钱。** 全套约 1,450 次请求、$0.15 上下。最贵的是单次塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）。
 
@@ -81,6 +81,7 @@ python3 games/play_chess.py                  # 不用装任何包，Python 3.9 �
 | `games/exp_game_rate.py` | 串行循环 Hz、固定 10 Hz 重叠飞行、决策过期 tick 数、成本核对 | 75 |
 | `games/exp_game_scale.py` | 候选项 2→255 的延迟与位置偏好、一次问 1→500 个问题 | ~59 |
 | `games/exp_game_chess.py` | 一步杀、最佳着法选中率、对随机走子 4 局（需 python-chess） | ~128 |
+| `games/exp_game_chess_prompt.py` | 换问法会不会下得好一点：一步杀提示与不提示、"以赢棋为目标"、具体提醒"别被白吃"（需 python-chess） | 784 |
 | `games/play_chess.py` | **在浏览器里和 Jev 下国际象棋**（网页是旁边的 `play_chess.html`）：请求与 `exp_game_chess.py` 逐字节相同 | 每步 1 次 |
 | `games/play_chess_check.py` | 上面那句"逐字节相同"的证据：31,604 个局面比对两边的请求体（需 python-chess 与 Node，要联网下 chess.js） | 不调 API |
 | `games/exp_game_xiangqi.py` | 中国象棋初探：同一套接法换成中国象棋，看盘、规则、一步杀（需 cchess 与 python-chess） | ~25 |
