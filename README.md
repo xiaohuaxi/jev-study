@@ -3,21 +3,22 @@
 试着把 TypeSafe 的 Jev 接进真实项目，顺手把每个结论都测了一遍。**报告里的主要数字，这里都有对应脚本可以重跑；个别没收进脚本的，报告里当场注明。**
 
 > A hands-on study of [Jev](https://typesafe.ai/) (TypeSafe's "System One" model) accessed through OpenRouter:
-> integration, Chinese-language behaviour, game loops, and Chinese chess (xiangqi). Most figures in the reports are
-> reproducible by the scripts in this repo; the few that are not say so where they appear. Reports are in Chinese. ~11,450 API calls, about $0.73 total.
+> integration, Chinese-language behaviour, and game loops, with two board-game case studies: chess and Chinese chess
+> (xiangqi). Most figures in the reports are reproducible by the scripts in this repo; the few that are not say so where they appear. Reports are in Chinese. ~11,450 API calls, about $0.73 total.
 > There are also one-command browser games: play chess (`python3 games/chess/play_chess.py`) or Chinese chess
 > (`python3 games/xiangqi/play_xiangqi.py`) against Jev.
 
 ## 这是什么
 
-四份实测记录，外加能把它们原样跑出来的脚本：
+五份实测记录，外加能把它们原样跑出来的脚本。打游戏是一份通用报告，下面挂两个下棋案例，每种棋一个子目录：
 
 | 专题 | 读什么 | 规模 |
 |---|---|---|
 | [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 160 次请求（与中文专题合计约 730 次） |
 | [中文表现](chinese/README.md) | 中英对照、绕弯表达、档位文案对打分的影响、汉字容量、长文定位 | 约 570 次请求 |
-| [打游戏](games/README.md) | GridWorld、国际象棋、中国象棋初探（结论已被下面的中国象棋专题改写）、实时循环的频率与成本、一次问几百个问题；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 2,410 次请求（含复核和问法对比）；做网页版另用约 790 次，不在可复跑的脚本里 |
-| [中国象棋](games/xiangqi/README.md) | 初探里「国际象棋一步杀 10/10、中国象棋 2/32」的差距从哪来（选项记谱里的 `#`、无效的旧局面）；读盘、规则落到盘面、谁能吃谁；接上适配器后整局能下到什么水平；另有[浏览器里和 Jev 下中国象棋](#在浏览器里和-jev-下棋)的网页版 | 约 10,900 次请求（含作废批次，作废的不在可复跑的脚本里）；做网页版另用约 490 次，不在可复跑的脚本里 |
+| [打游戏](games/README.md) | GridWorld、实时循环的频率与成本、候选项与一次问几百个问题、上下文两道墙；下棋两个案例的摘要，外加中国象棋初探（结论已被下面的中国象棋案例改写） | 约 1,100 次请求（含复核约 100 次、中国象棋初探约 50 次） |
+| 　↳ [国际象棋](games/chess/README.md) | 一步杀的高置信从哪来（选项记谱里的 `#`）、最佳着法与对随机走子、换问法能不能下得好一点；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 1,310 次请求（主实验 128 次 + 问法对比约 1,180 次）；做网页版另用约 790 次，不在可复跑的脚本里 |
+| 　↳ [中国象棋](games/xiangqi/README.md) | 初探里「国际象棋一步杀 10/10、中国象棋 2/32」的差距从哪来（选项记谱里的 `#`、无效的旧局面）；读盘、规则落到盘面、谁能吃谁；接上适配器后整局能下到什么水平；另有[浏览器里和 Jev 下中国象棋](#在浏览器里和-jev-下棋)的网页版 | 约 10,900 次请求（含作废批次，作废的不在可复跑的脚本里）；做网页版另用约 490 次，不在可复跑的脚本里 |
 
 全部经 OpenRouter 实测，只覆盖模型快照 `typesafe/jev-1.13-20260917`；官方直连、Vercel AI Gateway、Cloudflare Workers AI 都没跑。其余没跑到的，各报告文末的「未验证」一节列了。
 
@@ -59,7 +60,7 @@ python3 games/chess/play_chess.py            # 不用装任何包，Python 3.9 �
 - **key 不进浏览器**：只在本机这个脚本进程里用，网页拿不到，也不打印、不写日志。脚本信任本机这个网页：合法着法由网页算好送来，脚本不重新核对；网页里的库和网页同源运行，理论上也能借脚本调 Jev（拿不到 key），所以同时在途的请求限 2 个。
 - **要联网**：调 Jev 要连 OpenRouter；棋规和棋盘（[chess.js](https://github.com/jhlywa/chess.js)、[cm-chessboard](https://github.com/shaack/cm-chessboard)）从 jsdelivr 加载。
 - **每步约 1.1 秒，一盘 40 步约 $0.002。** 偶尔有一次调用会拖几十秒，脚本等到 20 秒就断开另发一次，页面上会显示已经等了几秒。
-- **Jev 看到的和[实验](games/README.md)里的一字不差**：同样的 FEN、轮到谁、全部合法着法、同一句问题，所以那边的结论照样适用。选项是带 `#`、`+`、`x` 的 SAN：网页上它确实会找杀，但主要是照着杀着后面的 `#` 选，这不说明它会下棋（在另外 48 个一步杀局面上对照，原样 SAN 48/48，去掉这些标记只中 10 个，见[中国象棋实测](games/xiangqi/README.md)第一节）；静态局面照样会送子。`games/chess/play_chess_check.py` 逐字节比对过 31,604 个局面，不调 Jev（要联网下 chess.js）。
+- **Jev 看到的和[国际象棋实测](games/chess/README.md)里的一字不差：同样的 FEN、轮到谁、全部合法着法、同一句问题，所以那边的结论照样适用。选项是带 `#`、`+`、`x` 的 SAN：网页上它确实会找杀，但主要是照着杀着后面的 `#` 选，这不说明它会下棋（在另外 48 个一步杀局面上对照，原样 SAN 48/48，去掉这些标记只中 10 个，见[中国象棋实测](games/xiangqi/README.md)第一节）；静态局面照样会送子。`games/chess/play_chess_check.py` 逐字节比对过 31,604 个局面，不调 Jev（要联网下 chess.js）。
 - 网页只通过一个接口（`POST /api/move`）要 Jev 的回答，格式写在 `games/chess/play_chess.py` 开头。
 
 ### 中国象棋
@@ -82,6 +83,8 @@ python3 games/xiangqi/play_xiangqi.py        # Python 3.9 起
 - 接口同样只有一个（`POST /api/move`），格式写在 `games/xiangqi/play_xiangqi.py` 开头。
 
 ## 每个脚本对应哪条结论
+
+脚本跟着报告走：`integration/`、`chinese/`、`games/` 下的归各自报告，`games/chess/`、`games/xiangqi/` 下的归各自的下棋报告（中国象棋初探 `exp_game_xiangqi.py` 例外，它的摘要写在打游戏报告第六节）。
 
 | 脚本 | 验证什么 | 请求数 |
 |---|---|---|
@@ -136,10 +139,11 @@ jevkit.py       共用：调用封装、并发、用量统计、三种题型构�
 corpus.py       共用：测试语料
 integration/    接入实测 + 脚本
 chinese/        中文表现实测 + 脚本
-games/          打游戏实测 + 通用实验脚本
-  chess/        国际象棋脚本 + 浏览器对弈（play_chess.py）
-  xiangqi/      中国象棋实测 + 脚本 + 局面集 + 浏览器对弈（play_xiangqi.py）
-xiangqi/        旧位置，只留转发（中国象棋已搬到 games/xiangqi/）
+games/          打游戏：通用报告 + 通用实验脚本；每种棋一个子目录，各放报告、实验、网页版
+  chess/        国际象棋：报告 + 实验 + 浏览器对弈（play_chess.py）
+  xiangqi/      中国象棋：报告 + 实验（含初探 exp_game_xiangqi.py）+ 局面集 + 浏览器对弈（play_xiangqi.py）
+  play_chess.py 转发，为老链接和旧命令保留（已搬到 chess/）
+xiangqi/        转发，为老链接和旧命令保留（已搬到 games/xiangqi/）
 ```
 
 脚本跑完会在自己旁边写运行日志（`*_log.json` / `.jsonl`），这些是可重跑的产物，已在 `.gitignore` 里排除。
