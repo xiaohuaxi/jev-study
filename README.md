@@ -60,7 +60,7 @@ python3 games/chess/play_chess.py            # 不用装任何包，Python 3.9 �
 - **key 不进浏览器**：只在本机这个脚本进程里用，网页拿不到，也不打印、不写日志。脚本信任本机这个网页：合法着法由网页算好送来，脚本不重新核对；网页里的库和网页同源运行，理论上也能借脚本调 Jev（拿不到 key），所以同时在途的请求限 2 个。
 - **要联网**：调 Jev 要连 OpenRouter；棋规和棋盘（[chess.js](https://github.com/jhlywa/chess.js)、[cm-chessboard](https://github.com/shaack/cm-chessboard)）从 jsdelivr 加载。
 - **每步约 1.1 秒，一盘 40 步约 $0.002。** 偶尔有一次调用会拖几十秒，脚本等到 20 秒就断开另发一次，页面上会显示已经等了几秒。
-- **Jev 看到的和[国际象棋实测](games/chess/README.md)里的一字不差：同样的 FEN、轮到谁、全部合法着法、同一句问题，所以那边的结论照样适用。选项是带 `#`、`+`、`x` 的 SAN：网页上它确实会找杀，但主要是照着杀着后面的 `#` 选，这不说明它会下棋（在另外 48 个一步杀局面上对照，原样 SAN 48/48，去掉这些标记只中 10 个，见[中国象棋实测](games/xiangqi/README.md)第一节）；静态局面照样会送子。`games/chess/play_chess_check.py` 逐字节比对过 31,604 个局面，不调 Jev（要联网下 chess.js）。
+- **Jev 看到的和[国际象棋实测](games/chess/README.md)里的一字不差**：同样的 FEN、轮到谁、全部合法着法、同一句问题，所以那边的结论照样适用。选项是带 `#`、`+`、`x` 的 SAN：网页上它确实会找杀，但主要是照着杀着后面的 `#` 选，这不说明它会下棋（在另外 48 个一步杀局面上对照，原样 SAN 48/48，去掉这些标记只中 10 个，见[中国象棋实测](games/xiangqi/README.md)第一节）；静态局面照样会送子。`games/chess/play_chess_check.py` 逐字节比对过 31,604 个局面，不调 Jev（要联网下 chess.js）。
 - 网页只通过一个接口（`POST /api/move`）要 Jev 的回答，格式写在 `games/chess/play_chess.py` 开头。
 
 ### 中国象棋
