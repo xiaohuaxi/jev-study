@@ -4,15 +4,15 @@
     python exp_xiangqi_probe.py        # 发 66 次请求（约 $0.003），原始回包写 exp_xiangqi_probe_log.json（不入库）
 
 这是研究开头的第一眼，沿用初探的旧格式（选项键是坐标、state 带合法着法清单），每题两次：
-  - 国际象棋：games/exp_game_chess.py 的 5 个一步杀局面（都是有效题），选项描述三种——原样 SAN / # 换成 + / 去掉 + 和 #。
+  - 国际象棋：games/chess/exp_game_chess.py 的 5 个一步杀局面（都是有效题），选项描述三种——原样 SAN / # 换成 + / 去掉 + 和 #。
     本目录 README.md（中国象棋实测报告）第一节只引用这一半，而且只当线索；正式结论以 exp_xiangqi_mate.py 的 48 个局面为准。
-  - 中国象棋：初探 games/exp_game_xiangqi.py 的 6 个旧局面，其中 5 个后来证实无效（摆法不合法 / 另有一步困毙，
+  - 中国象棋：初探 games/xiangqi/exp_game_xiangqi.py 的 6 个旧局面，其中 5 个后来证实无效（摆法不合法 / 另有一步困毙，
     见 boards.audit_mate），所以这一半的数字不用；判合法用的是当时的 cchess 写法，也没过 boards 的核对。
 需要 cchess 与 python-chess（python3 -m pip install cchess chess）。
 """
 # 让本脚本从任意目录都能找到仓库根部的 jevkit.py
 import sys as _sys, pathlib as _pathlib
-_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent.parent))
 import sys, os, json
 import chess, cchess
 import jevkit as jev

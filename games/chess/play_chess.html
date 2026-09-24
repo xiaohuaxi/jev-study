@@ -160,7 +160,7 @@ function newGame() {
   }
   human = document.querySelector('input[name=side]:checked').value
   chess.setHeader('Event', '和 Jev 下国际象棋')
-  chess.setHeader('Site', 'jev-study games/play_chess.py')
+  chess.setHeader('Site', 'jev-study games/chess/play_chess.py')
   chess.setHeader('Date', localTime().slice(0, 10).replaceAll('-', '.'))
   chess.setHeader(human === 'w' ? 'White' : 'Black', '你')
   chess.setHeader(human === 'w' ? 'Black' : 'White', 'Jev')

@@ -9,7 +9,7 @@
 """
 # 让本脚本从任意目录都能找到仓库根部的 jevkit.py / corpus.py
 import sys as _sys, pathlib as _pathlib
-_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent.parent))
 import json, os, random, statistics, sys, time
 from concurrent.futures import ThreadPoolExecutor
 import chess

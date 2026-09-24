@@ -1,6 +1,6 @@
 """网页版中国象棋（play_xiangqi.py）的离线核对：不调 Jev、不花钱、不需要 key。依赖同 play_xiangqi.py。
 
-    python3 xiangqi/play_xiangqi_check.py          # 约五分钟
+    python3 games/xiangqi/play_xiangqi_check.py    # 约五分钟
 
 核对四件事，Jev 的回答一律用假的（选中第一个选项），请求在交给网络之前就截下：
 1. 请求和整局实验逐字节相同：随机下若干局，Jev 执红、执黑各一半，每次要问 Jev 时，把网页版要发的请求体
@@ -15,7 +15,7 @@
 4. 接着上次走和从头重放，回答完全相同；回头再问早先的局面（新开一局、刷新网页）也一样。
 """
 import sys as _sys, pathlib as _pathlib
-_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent.parent))
 import json, os, random, re
 os.environ.setdefault('OPENROUTER_API_KEY', 'not-used-by-this-check')   # jevkit 导入时要 key；这里一个请求都不发
 import play_xiangqi as px     # 先导入它：缺库时由它打印安装命令

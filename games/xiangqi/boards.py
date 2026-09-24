@@ -28,9 +28,9 @@
 修订 1（独立审查后）：选项键改成纯辅音、跨臂同键；select 默认排除无效旧局面；middle / gain 排除强制杀。
 
 用法：
-  python3 xiangqi/boards.py selftest           跑全部断言：规则细则、记谱、描述泄露、渲染、选项键、违规分类、两层物质、引擎可复现、局面集逐个复核
-  python3 xiangqi/boards.py selftest --quick   同上，但随机对局交叉比对只跑少量
-  python3 xiangqi/boards.py show GAME FEN      打印一个局面的特征与各档描述（调试用）
+  python3 games/xiangqi/boards.py selftest           跑全部断言：规则细则、记谱、描述泄露、渲染、选项键、违规分类、两层物质、引擎可复现、局面集逐个复核
+  python3 games/xiangqi/boards.py selftest --quick   同上，但随机对局交叉比对只跑少量
+  python3 games/xiangqi/boards.py show GAME FEN      打印一个局面的特征与各档描述（调试用）
 
 cchess 的坑（读 1.25.5 源码核实，下面的包装都处理了）：
   - is_valid_move 不查走完后自己被将（含对脸将），完整合法要再过 is_checked_move；

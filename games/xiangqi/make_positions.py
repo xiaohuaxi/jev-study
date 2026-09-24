@@ -10,7 +10,7 @@
   mate    一步杀，分三层：
             natural   自对弈里出现的「恰好一步能将死」局面，每棋种 40，每局至多取 2 个；
             textbook  教科书杀型，每棋种 8（下面 BOOK），都是该杀型的典型摆法，另加少量无关子与一两步不成杀的将军；
-            legacy    初探用过的旧局面：中国象棋 games/exp_game_xiangqi.py 的 6 个，国际象棋 games/exp_game_chess.py 的 5 个。
+            legacy    初探用过的旧局面：中国象棋 games/xiangqi/exp_game_xiangqi.py 的 6 个，国际象棋 games/chess/exp_game_chess.py 的 5 个。
           中国象棋另要求没有一步困毙（困毙也判胜，会让答案不唯一）；引擎要在固定深度找到这步杀。
   middle  实战中局：自对弈第 20–60 半回合、子力 ≥20（含将帅）、没有一步杀、引擎评估在 ±300 厘兵内，每棋种 30，每局至多 1 个。
   gain    一步得子：恰好一步按两层物质净得 ≥GAIN_MIN（中国象棋 4 = 一马 / 一炮，国际象棋 3 = 一个轻子），

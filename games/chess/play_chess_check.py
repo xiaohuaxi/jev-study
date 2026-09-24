@@ -3,7 +3,7 @@
 不调 Jev、不花钱、不需要 key。需要 python-chess（python3 -m pip install chess）和 Node（在 Python 3.13、
 Node v24.20.0 上跑过）；每次跑都要联网，从 jsdelivr 下载网页用的那份 chess.js 并核对哈希。
 
-    python3 games/play_chess_check.py            # 默认随机下 200 局，外加实验里的局面和几个边角局面
+    python3 games/chess/play_chess_check.py      # 默认随机下 200 局，外加实验里的局面和几个边角局面
 
 做法：
 1. Node 载入网页用的同一份 chess.js（jsdelivr 上的 chess.js@1.4.0），随机下 N 局，每一步记下
@@ -17,7 +17,7 @@ Node v24.20.0 上跑过）；每次跑都要联网，从 jsdelivr 下载网页�
    所以再把每个刚走过两格兵的局面换成"照写过路兵格"的 FEN 送一遍，确认这一步也不出错。
 """
 import sys as _sys, pathlib as _pathlib
-_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent.parent))
 import argparse, hashlib, json, os, subprocess, tempfile, urllib.request
 os.environ.setdefault('OPENROUTER_API_KEY', 'not-used-by-this-check')   # jevkit 导入时要 key；这里一个请求都不发
 import chess

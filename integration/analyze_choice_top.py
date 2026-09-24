@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """choice 是不是概率最高的那项：扫仓库各专题目录下的实验日志，只读、不发请求、不 import jevkit（没设 key 也能用）。
 
-    python3 integration/analyze_choice_top.py              # 扫 games/、xiangqi/ 等目录下的 *_log.json / *_log.jsonl
+    python3 integration/analyze_choice_top.py              # 扫仓库各级目录下的 *_log.json / *_log.jsonl
     python3 integration/analyze_choice_top.py 日志 ...     # 只看指定的日志
 
 凡是日志里同时带 choice 和 probabilities 的回答都算（choice 题型的原始回包；score、noul 不带 choice，自然不算）。
@@ -9,7 +9,7 @@
 作废批次的日志（*_void_log.json）默认不算：一步杀那批不是本仓库的脚本跑出来的，读者重跑不出。
 日志被 .gitignore 排除、不入库，要先跑对应的实验脚本；没保存原始回包的日志统计为 0 条。
 
-会留下 choice 原始回包的是 games/exp_game_chess_prompt.py 和 xiangqi/ 下的实验脚本。
+会留下 choice 原始回包的是 games/chess/exp_game_chess_prompt.py 和 games/xiangqi/ 下的实验脚本。
 支撑 integration/README.md「几个只有实测才看得到的细节」里概率和、choice 那两条。
 """
 import collections, glob, json, os, sys
@@ -53,7 +53,8 @@ def main():
     gaps = collections.Counter()
     by_n = collections.defaultdict(collections.Counter)   # 按选项数分组的概率和
     print('%-36s %6s %8s %8s %8s' % ('日志', '回答', '唯一最高', '并列最高', '低于最高'))
-    files = sys.argv[1:] or sorted(p for p in glob.glob(os.path.join(ROOT, '*', '*_log.json')) + glob.glob(os.path.join(ROOT, '*', '*_log.jsonl'))
+    files = sys.argv[1:] or sorted(p for pat in ('*_log.json', '*_log.jsonl')
+                                   for p in glob.glob(os.path.join(ROOT, '**', pat), recursive=True)
                                    if '_void_' not in os.path.basename(p))
     for fp in files:
         c = collections.Counter()

@@ -11,7 +11,7 @@
     同一问法问两次，用来看问法之间的差别有多少只是两次问答本身的出入。
 """
 import sys as _sys, pathlib as _pathlib
-_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent.parent))
 import io, json, os, random, statistics
 from concurrent.futures import ThreadPoolExecutor
 import chess, chess.pgn

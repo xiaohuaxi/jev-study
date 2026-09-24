@@ -24,9 +24,9 @@
                             FEN 下 U2 分不开「读不出盘」与「算不出哪个将军是杀」，这两臂把读盘去掉再看 k 分档与免费基线；
                             报告第六节那张 k·份额表（FEN / 格子表 / 子力清单三行）由 report 第 4d 节逐格输出
   抖动                      每棋种 10 个局面（8 自然 + 2 教科书）× U0 × rep 1、2（换 rep 换键↔着法映射与选项顺序）
-  旧格式复现                初探原格式：选项键是坐标、state 带合法着法清单；中国象棋照 games/exp_game_xiangqi.py 的
+  旧格式复现                初探原格式：选项键是坐标、state 带合法着法清单；中国象棋照 games/xiangqi/exp_game_xiangqi.py 的
                             C1（中文记谱 / 带吃子的坐标描述）与 C2（FEN / 子力清单）各跑两轮，共 32 次，与旧的
-                            「32 次中 2 次」同构；国际象棋照 games/exp_game_chess.py 原样 SAN，5 局面 × 2 次
+                            「32 次中 2 次」同构；国际象棋照 games/chess/exp_game_chess.py 原样 SAN，5 局面 × 2 次
 选项键：boards.options() 修订 1 起，键↔着法与顺序只由 (局面, rep) 定、各臂共用，臂间差异里不混进键名和顺序。
 共 1,618 次请求，实测 $0.093（2026-09-22，输入约 220 万 token）：原批次 1,426 次 $0.081，补测两臂 192 次 $0.012。
 
@@ -36,7 +36,7 @@
 """
 # 让本脚本从任意目录都能找到仓库根部的 jevkit.py
 import sys as _sys, pathlib as _pathlib
-_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent.parent))
 import json, math, os, random, statistics, sys, time
 from collections import Counter, defaultdict
 
@@ -152,7 +152,7 @@ def build_main(p, arm, rep=0):
             'k2m': k2m, 'req': {'state': st, 'questions': qs}}
 
 
-# 旧格式：照抄 games/exp_game_xiangqi.py / games/exp_game_chess.py
+# 旧格式：照抄 games/xiangqi/exp_game_xiangqi.py / games/chess/exp_game_chess.py
 OLD_XQ_ASK = '你在下中国象棋，执红。从合法着法里选一步最好的。注意：这里存在一步将死的机会。'
 OLD_CH_ASK = '你在下国际象棋，执白。从合法着法里选一步最好的。注意：这里存在一步将死的机会。'
 OLD_COORDS = '坐标用 ICCS 记法：纵线 a 到 i 从红方左手边数起，横线 0 到 9 从红方底线数起'
@@ -160,7 +160,7 @@ OLD_NAME = B.CN_NAME
 
 
 def old_xq_moves(fen):
-    """games/exp_game_xiangqi.py 的 legal_moves 原样：cchess 枚举顺序，[(iccs, 中文记谱, 起点, 终点, 起点子, 终点子, cchess 认为是杀)]"""
+    """games/xiangqi/exp_game_xiangqi.py 的 legal_moves 原样：cchess 枚举顺序，[(iccs, 中文记谱, 起点, 终点, 起点子, 终点子, cchess 认为是杀)]"""
     import cchess
     b = cchess.ChessBoard(fen)
     out = []

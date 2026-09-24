@@ -74,7 +74,7 @@ report 核对：日志里的条目与当前出题一一对应、state 与题目�
 """
 # 让本脚本从任意目录都能找到仓库根部的 jevkit.py
 import sys as _sys, pathlib as _pathlib
-_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent))
+_sys.path.insert(0, str(_pathlib.Path(__file__).resolve().parent.parent.parent))
 import collections, json, math, os, random, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -94,7 +94,7 @@ BOOT = 4000
 GNAME = {XQ: '中国象棋', CH: '国际象棋'}
 
 # ---------------------------------------------------------------- B0 规则陈述
-# 前 6 条中国象棋、前 3 条国际象棋是初探（games/exp_game_xiangqi.py）的原句
+# 前 6 条中国象棋、前 3 条国际象棋是初探（games/xiangqi/exp_game_xiangqi.py）的原句
 B0 = {
     XQ: [
         ('xq_n', True, '中国象棋里，马走日字时，如果「马腿」那一格被任何棋子占住，这一步就不能走。'),
