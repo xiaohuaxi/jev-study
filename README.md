@@ -4,13 +4,15 @@
 
 > A hands-on study of [Jev](https://typesafe.ai/) (TypeSafe's "System One" model) accessed through OpenRouter:
 > integration, Chinese-language behaviour, and game loops, with two board-game case studies: chess and Chinese chess
-> (xiangqi). Most figures in the reports are reproducible by the scripts in this repo; the few that are not say so where they appear. Reports are in Chinese. ~11,450 API calls, about $0.73 total.
+> (xiangqi). A separate study tests in-context learning: few-shot examples, reward logs in multi-armed bandits,
+> rule guessing, a maze with hidden traps, and past mistakes in chess (~226,000 calls, about $11.9, most of it bandits).
+> Most figures in the reports are reproducible by the scripts in this repo; the few that are not say so where they appear. Reports are in Chinese. ~237,500 API calls, about $12.7 total.
 > There are also one-command browser games: play chess (`python3 games/chess/play_chess.py`) or Chinese chess
 > (`python3 games/xiangqi/play_xiangqi.py`) against Jev.
 
 ## 这是什么
 
-五份实测记录，外加能把它们原样跑出来的脚本。打游戏是一份通用报告，下面挂两个下棋案例，每种棋一个子目录：
+六份实测记录，外加能把它们原样跑出来的脚本。打游戏是一份通用报告，下面挂两个下棋案例，每种棋一个子目录：
 
 | 专题 | 读什么 | 规模 |
 |---|---|---|
@@ -19,6 +21,7 @@
 | [打游戏](games/README.md) | GridWorld、实时循环的频率与成本、候选项与一次问几百个问题、上下文两道墙；下棋两个案例的摘要，外加中国象棋初探（结论已被下面的中国象棋案例改写） | 约 1,100 次请求（含复核约 100 次、中国象棋初探约 50 次） |
 | 　↳ [国际象棋](games/chess/README.md) | 一步杀的高置信从哪来（选项记谱里的 `#`）、最佳着法与对随机走子、换问法能不能下得好一点；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 1,310 次请求（主实验 128 次 + 问法对比约 1,180 次）；做网页版另用约 790 次，不在可复跑的脚本里 |
 | 　↳ [中国象棋](games/xiangqi/README.md) | 初探里「国际象棋一步杀 10/10、中国象棋 2/32」的差距从哪来（选项记谱里的 `#`、无效的旧局面）；读盘、规则落到盘面、谁能吃谁；接上适配器后整局能下到什么水平；另有[浏览器里和 Jev 下中国象棋](#在浏览器里和-jev-下棋)的网页版 | 约 10,900 次请求（含作废批次，作废的不在可复跑的脚本里）；做网页版另用约 490 次，不在可复跑的脚本里 |
+| [上下文学习](learning/README.md) | 把例子和记录放进 state 能学到什么：给例子（few-shot 分类）、给奖励记录（多臂老虎机，含按概率抽样与探索提示）、猜规则、带隐藏陷阱的迷宫、国际象棋错着记录；多局迷宫里"越玩越好"的是谁 | 约 226,070 次请求（五轮，其中第三、四轮老虎机 158,400 次）；冒烟和一次误启动的几百次不在脚本里 |
 
 全部经 OpenRouter 实测，只覆盖模型快照 `typesafe/jev-1.13-20260917`；官方直连、Vercel AI Gateway、Cloudflare Workers AI 都没跑。其余没跑到的，各报告文末的「未验证」一节列了。
 
@@ -36,13 +39,13 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 **多数脚本只用标准库，Python 3.9 就能跑**——调 Jev 是直接发 HTTP 请求，不经过官方 SDK（在系统自带的 3.9.6 上实跑验证过）。
 
-要装东西的只有这几个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/chess/exp_game_chess.py` 和 `games/chess/exp_game_chess_prompt.py` 要 `python3 -m pip install chess`，`games/xiangqi/exp_game_xiangqi.py` 要 `python3 -m pip install cchess chess`，`games/chess/play_chess_check.py` 要 `python3 -m pip install chess` 和 Node。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
+要装东西的只有这几个：`integration/pysdk_test.py` 和 `integration/sdk_gaps.py` 用官方 `typesafe-sdk`（它自己要求 Python ≥3.10），`games/chess/exp_game_chess.py` 和 `games/chess/exp_game_chess_prompt.py` 要 `python3 -m pip install chess`，`games/xiangqi/exp_game_xiangqi.py` 要 `python3 -m pip install cchess chess`，`learning/exp_icl_chess.py` 要 `python3 -m pip install chess`（还要先跑 `games/chess/exp_game_chess_prompt.py`，它从那份日志里挑局面），`games/chess/play_chess_check.py` 要 `python3 -m pip install chess` 和 Node。另有 `integration/jssdk_test.mjs` 用官方 `@typesafe-ai/sdk`，Node ≥20。
 
 `games/xiangqi/` 下的脚本要 `python3 -m pip install pyffish==0.0.90 cchess==1.25.5 chess==1.11.2`，外加引擎 Fairy-Stockfish 14.0.1（`brew install fairy-stockfish`；引擎路径可用环境变量 `FAIRY_STOCKFISH` 指定，不设就从 PATH 里找）；其中 `games/xiangqi/exp_xiangqi_probe.py` 只要 cchess 与 chess，网页对弈 `games/xiangqi/play_xiangqi.py` 和它的核对脚本只要这三个库、不需要引擎。Python 3.9 起能跑，报告里的数字是在 3.13 上跑的。
 
 如果 pip 报 `externally-managed-environment`（Homebrew 的 Python、较新的 Debian / Ubuntu 系统 Python 会这样），先在仓库根目录建个虚拟环境：`python3 -m venv .venv && . .venv/bin/activate`，之后在这个终端里照常用上面的命令（建环境时若提示缺 ensurepip，先装系统的 python3-venv 包）。
 
-**会真的花钱。** 全套约 11,450 次请求、$0.73 上下，其中 `games/xiangqi/` 的四个脚本约 9,215 次、约 $0.54（中国象棋报告的约 10,900 次另含作废批次，作废的不在脚本里）。单次请求最贵的是塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）；按整个脚本算最贵的是 `games/xiangqi/exp_xiangqi_adapter.py`（5,950 次，大头是整局）。
+**会真的花钱。** 全套约 237,500 次请求、$12.7 上下，大头是 `learning/` 的 12 个脚本：约 226,070 次、约 $11.9，其中第三、四轮老虎机 `exp_icl_bandit3.py`、`exp_icl_bandit4.py` 两个就占 158,400 次、约 $9.2（上下文学习报告里另有冒烟和一次误启动的几百次请求，不在脚本里）。其余专题合计约 11,450 次、$0.73，其中 `games/xiangqi/` 的四个脚本约 9,215 次、约 $0.54（中国象棋报告的约 10,900 次另含作废批次，作废的不在脚本里）。单次请求最贵的是塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）；按整个脚本算最贵的是 `learning/exp_icl_bandit4.py`（102,400 次、约 $5.3；复现报告数字要加 `--max-run 200`，不加会跑满 128,000 次），其他专题里最贵的是 `games/xiangqi/exp_xiangqi_adapter.py`（5,950 次，大头是整局）。
 
 **`jevkit.spend()`（脚本里写作 `jev.spend()`）打印的「失败」计数不一定是出错。** 探上限、探非法参数的实验本来就期望收到 4xx。
 
@@ -84,7 +87,7 @@ python3 games/xiangqi/play_xiangqi.py        # Python 3.9 起
 
 ## 每个脚本对应哪条结论
 
-脚本跟着报告走：`integration/`、`chinese/`、`games/` 下的归各自报告，`games/chess/`、`games/xiangqi/` 下的归各自的下棋报告（中国象棋初探 `exp_game_xiangqi.py` 例外，它的摘要写在打游戏报告第六节）。
+脚本跟着报告走：`integration/`、`chinese/`、`games/`、`learning/` 下的归各自报告，`games/chess/`、`games/xiangqi/` 下的归各自的下棋报告（中国象棋初探 `exp_game_xiangqi.py` 例外，它的摘要写在打游戏报告第六节）。
 
 | 脚本 | 验证什么 | 请求数 |
 |---|---|---|
@@ -123,6 +126,18 @@ python3 games/xiangqi/play_xiangqi.py        # Python 3.9 起
 | `games/xiangqi/exp_xiangqi_probe.py` | 发现线索的小对照：初探的旧格式下，国际象棋 SAN 的 `#` 换成 `+`、去掉 `+` 和 `#` 各会怎样；中国象棋那半用的是无效旧局面，数字不用（需 cchess 与 python-chess） | 66 |
 | `games/xiangqi/play_xiangqi.py` | **在浏览器里和 Jev 下中国象棋**（网页是旁边的 `play_xiangqi.html`）：请求用 `exp_xiangqi_adapter.py` 造，平常每步和整局实验只差执黑问句与选项键；一步能赢时直接走，长将着法不列给它（需 pyffish、cchess、python-chess，不需要引擎） | 每步 1 次 |
 | `games/xiangqi/play_xiangqi_check.py` | 上面那句的证据：随机下 8 局，381 次平常步的请求逐字节比对；另核对判结束的粗筛（110 局、约一万步与每步都问 pyffish 一致）、长将拦截、一步胜直接走、接着走与从头重放结果相同（约五分钟，依赖同上） | 不调 API |
+| `learning/exp_icl_bandit.py` | **首轮·上下文学习**：老虎机固定历史（uniform / mislead × 七种写法 × 长度 4–1,600）、在线闭环 40 轮（含程序代按前 8 轮，本地模拟随机 / 贪心 / UCB1 作参照）、猜规则卡牌四种隐藏规则 | 6,660 |
+| `learning/exp_icl_maze.py` | **首轮**：带两个隐藏陷阱的 6×6 迷宫连打 5 局，跨局记录六种写法（不给 / 完整轨迹 / 失败原因 / 程序汇总 / 标到方向 / 按陷阱重算距离） | 8,621 |
+| `learning/exp_icl_chess.py` | **首轮**：38 个送子局面上附错误记录：同局面一条、写成结论、标进选项、加一条好记录、只给 10/60/250 条别局记录、本局那条埋在 250 条里（需 python-chess，要先跑 `games/chess/exp_game_chess_prompt.py`） | 684 |
+| `learning/exp_icl_rules.py` | **补测·干净的猜规则**：4 族规则 × 正反方向 × 50 任务，同一序列前缀 4/16/64 条、测试牌去重且平衡；原始 / 加指令 / 牌面→正确按键 / 按按键分组四种写法，中英配对 | 5,600 |
+| `learning/exp_icl_bandit2.py` | **补测·老虎机拆开怎么问、怎么选**：原问法 / 长期目标 + 探索提示 × 取 `choice` / 按概率抽，40 局 × 80 轮，本地模拟随机、始终按 A、两种贪心、UCB1、Thompson；另做 60% 偏置的固定历史诊断（问法、分组、统计表，中英） | 13,400 |
+| `learning/exp_icl_maze2.py` | **补测·迷宫去距离干扰**：12 张图 × 2 次 × 5 局、40 步上限，不给历史 / 失败历史 × 原距离 / 注明距离不含陷阱 / 不给距离 / 按已知陷阱重算距离 | 11,304 |
+| `learning/exp_icl_fewshot.py` | **补测·few-shot 分类**：5 类英文短句，有名字 / 无含义标签 × 每类 0/1/2/4 个例子，例子放 state 或写进选项描述 | 1,100 |
+| `learning/exp_icl_maze3.py` | **第三轮·迷宫纯导航对照**：12 张图 × 10 个起点单局导航（无陷阱 / 陷阱画成墙 × 给不给距离，另一组目标提陷阱）；多局失败历史 + 已知陷阱当墙算距离 | 10,866 |
+| `learning/exp_icl_bandit3.py` | **第三轮·老虎机**：4 钮拆开长期目标 / 探索提示，5% 随机与"保留最高项概率、其余均分"两种随机对照；8 钮、0.6 对 0.5 两种难度 | 56,000 |
+| `learning/exp_icl_maze4.py` | **第四轮·直线距离对照**：距离换成不管墙的直线距离（字段名不变 / 如实命名 / 坑画成墙）；`baseline` 子命令是按所给距离挑最小的纯程序对照，0 请求 | 8,188 |
+| `learning/exp_icl_bandit4.py` | **第四轮·老虎机复测**：新奖励种子、每组 160 局；8 钮加"按时间表随机"对照；4 钮只取最高项复测原问法 / 只加探索提示 / 长期目标 + 探索提示 | 102,400 |
+| `learning/exp_icl_maze5.py` | **第五轮·只删踩坑记录**：同第三轮"已知坑当墙算距离"多局组，唯一差别是 state 里不写失败历史 | 1,246 |
 
 ## 两个教训
 
@@ -143,6 +158,7 @@ games/          打游戏：通用报告 + 通用实验脚本；每种棋一个�
   chess/        国际象棋：报告 + 实验 + 浏览器对弈（play_chess.py）
   xiangqi/      中国象棋：报告 + 实验（含初探 exp_game_xiangqi.py）+ 局面集 + 浏览器对弈（play_xiangqi.py）
   play_chess.py 转发，为老链接和旧命令保留（已搬到 chess/）
+learning/       上下文学习：报告 + 12 个实验脚本（老虎机、猜规则、few-shot 分类、迷宫、国际象棋错着）
 xiangqi/        转发，为老链接和旧命令保留（已搬到 games/xiangqi/）
 ```
 
