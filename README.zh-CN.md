@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 # jev-study
 
 试着把 TypeSafe 的 Jev 接进真实项目，顺手把每个结论都测了一遍。**报告里的主要数字，这里都有对应脚本可以重跑；个别没收进脚本的，报告里当场注明。**
