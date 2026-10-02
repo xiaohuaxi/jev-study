@@ -6,7 +6,7 @@
 > integration, Chinese-language behaviour, and game loops, with two board-game case studies: chess and Chinese chess
 > (xiangqi). A separate study tests in-context learning: few-shot examples, reward logs in multi-armed bandits,
 > rule guessing, a maze with hidden traps, and past mistakes in chess (~226,000 calls, about $11.9, most of it bandits).
-> Most figures in the reports are reproducible by the scripts in this repo; the few that are not say so where they appear. Reports are in Chinese. ~237,500 API calls, about $12.7 total.
+> Most figures in the reports are reproducible by the scripts in this repo; the few that are not say so where they appear. Reports are in Chinese. ~238,200 API calls, about $13.1 total.
 > There are also one-command browser games: play chess (`python3 games/chess/play_chess.py`) or Chinese chess
 > (`python3 games/xiangqi/play_xiangqi.py`) against Jev.
 
@@ -16,7 +16,7 @@
 
 | 专题 | 读什么 | 规模 |
 |---|---|---|
-| [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 160 次请求（与中文专题合计约 730 次） |
+| [接入](integration/README.md) | 怎么调通、上限、错误码、延迟、官方 SDK 能不能换入口、真实花费 | 约 160 次请求（与中文专题合计约 730 次）；两道墙精确二分另 695 次 |
 | [中文表现](chinese/README.md) | 中英对照、绕弯表达、档位文案对打分的影响、汉字容量、长文定位 | 约 570 次请求 |
 | [打游戏](games/README.md) | GridWorld、实时循环的频率与成本、候选项与一次问几百个问题、上下文两道墙；下棋两个案例的摘要，外加中国象棋初探（结论已被下面的中国象棋案例改写） | 约 1,100 次请求（含复核约 100 次、中国象棋初探约 50 次） |
 | 　↳ [国际象棋](games/chess/README.md) | 一步杀的高置信从哪来（选项记谱里的 `#`）、最佳着法与对随机走子、换问法能不能下得好一点；另有[浏览器里和 Jev 下国际象棋](#在浏览器里和-jev-下棋)的网页版 | 约 1,310 次请求（主实验 128 次 + 问法对比约 1,180 次）；做网页版另用约 790 次，不在可复跑的脚本里 |
@@ -45,7 +45,7 @@ python3 integration/replicate.py             # 先跑这个：三条头条结论
 
 如果 pip 报 `externally-managed-environment`（Homebrew 的 Python、较新的 Debian / Ubuntu 系统 Python 会这样），先在仓库根目录建个虚拟环境：`python3 -m venv .venv && . .venv/bin/activate`，之后在这个终端里照常用上面的命令（建环境时若提示缺 ensurepip，先装系统的 python3-venv 包）。
 
-**会真的花钱。** 全套约 237,500 次请求、$12.7 上下，大头是 `learning/` 的 12 个脚本：约 226,070 次、约 $11.9，其中第三、四轮老虎机 `exp_icl_bandit3.py`、`exp_icl_bandit4.py` 两个就占 158,400 次、约 $9.2（上下文学习报告里另有冒烟和一次误启动的几百次请求，不在脚本里）。其余专题合计约 11,450 次、$0.73，其中 `games/xiangqi/` 的四个脚本约 9,215 次、约 $0.54（中国象棋报告的约 10,900 次另含作废批次，作废的不在脚本里）。单次请求最贵的是塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）；按整个脚本算最贵的是 `learning/exp_icl_bandit4.py`（102,400 次、约 $5.3；复现报告数字要加 `--max-run 200`，不加会跑满 128,000 次），其他专题里最贵的是 `games/xiangqi/exp_xiangqi_adapter.py`（5,950 次，大头是整局）。
+**会真的花钱。** 全套约 238,200 次请求、$13.1 上下，大头是 `learning/` 的 12 个脚本：约 226,070 次、约 $11.9，其中第三、四轮老虎机 `exp_icl_bandit3.py`、`exp_icl_bandit4.py` 两个就占 158,400 次、约 $9.2（上下文学习报告里另有冒烟和一次误启动的几百次请求，不在脚本里）。其余专题合计约 12,150 次、$1.2，其中 `games/xiangqi/` 的四个脚本约 9,215 次、约 $0.54（中国象棋报告的约 10,900 次另含作废批次，作废的不在脚本里）。单次请求最贵的是塞三万到六万 token 的那几个（`exp_ctx_rule.py`、`exp_ctx_count.py`、`exp_game_scale.py`、`exp_needle.py`、`exp_token.py`）；按整个脚本算最贵的是 `learning/exp_icl_bandit4.py`（102,400 次、约 $5.3；复现报告数字要加 `--max-run 200`，不加会跑满 128,000 次），其他专题里请求最多的是 `games/xiangqi/exp_xiangqi_adapter.py`（5,950 次，大头是整局），花钱最多的是 `integration/exp_ctx_count.py`（695 次、约 $0.44）。
 
 **`jevkit.spend()`（脚本里写作 `jev.spend()`）打印的「失败」计数不一定是出错。** 探上限、探非法参数的实验本来就期望收到 4xx。
 
@@ -95,7 +95,8 @@ python3 games/xiangqi/play_xiangqi.py        # Python 3.9 起
 | `corpus.py` | 语料：12 个中英平行工单用例、10 类中文特有表达、7 种同义写法、5 组同义句 | — |
 | `integration/replicate.py` | **三条头条结论的复跑**：扇出经济性、档位文案效应、模型串与错误码 | 33 |
 | `integration/exp_limits.py` | 题型上限（choice 255 / score 10）、state 四种形态、两个入口等价、聊天接口被拒、并发 20 | ~35 |
-| `integration/exp_ctx_rule.py` | **上下文的两道墙**：state+最长问题 32,768、整请求 65,536；也是对旧结论的更正证据 | 10 |
+| `integration/exp_ctx_rule.py` | **上下文的两道墙**：state + 最长问题约 32K、整请求约 64K，分清是哪两道；也是对旧结论的更正证据 | 10 |
+| `integration/exp_ctx_count.py` | **两道墙的精确边界**：各形状二分到 1 token，state + 最贵的一道题 ≤ 32,743、整请求计费 ≤ 65,792；计费逐项公式；`report` 子命令只读日志复算 | 695 |
 | `integration/analyze_choice_top.py` | 概率和为 0.99 有多常见（按选项数分）、`choice` 是不是概率最高的那项：扫各专题目录下的实验日志，要先跑 `games/chess/exp_game_chess_prompt.py` 和 `games/xiangqi/` 下的实验 | 不调 API |
 | `integration/pysdk_test.py` | 官方 Python SDK 指向 OpenRouter：同步、异步、异常映射 | 4 |
 | `integration/sdk_gaps.py` | SDK 换入口后丢了什么：`usage.cost`、`id`、`provider` 都拿不到 | 1 |
